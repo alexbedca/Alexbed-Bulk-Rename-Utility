@@ -103,4 +103,4 @@ engine.apply(paths)   # two-phase, rolls back on any failure
 - [docs/RESEARCH.md](docs/RESEARCH.md): competitive analysis, the UX flaws we fix, feature checklist
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): stack, layout, data flow, safety model, how to add skills
 
-Tests: `.venv\Scripts\python -m pytest`
+Tests: `.venv\Scripts\python -m pytest` (about 10s). The real 10,000-file rename/undo runs are marked slow: `.venv\Scripts\python -m pytest -m slow` (a few minutes; on this PC rename and undo each took about 4s, the rest is creating the files).

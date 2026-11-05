@@ -119,3 +119,23 @@ def test_missing_tags_warn_and_keep_original(tmp_path, mp3_factory):
     (row,) = RenameEngine([TemplateRule(template="<artist> - <title>")]).preview([p])
     assert row.proposed == "untagged.mp3"
     assert row.status == Status.UNCHANGED
+
+
+def test_chain_and_cycle_use_temporary_hop(tmp_path):
+    a, b, c = touch(tmp_path, "a.txt", "b.txt", "c.txt")
+    # chain a->b->c->d and a 2-cycle in one batch, mixed with direct renames
+    d = tmp_path / "d.txt"
+    x, y = touch(tmp_path, "x.txt", "y.txt")
+    ops = [RenameOp(a, b), RenameOp(b, c), RenameOp(c, d), RenameOp(x, y), RenameOp(y, x)]
+    assert execute(ops).ok
+    assert {p.name: p.read_text() for p in tmp_path.iterdir()} == {
+        "b.txt": "a.txt", "c.txt": "b.txt", "d.txt": "c.txt", "y.txt": "x.txt", "x.txt": "y.txt"}
+
+
+def test_parallel_failure_rolls_back_everything(tmp_path):
+    srcs = touch(tmp_path, *[f"f{i:03d}.txt" for i in range(200)])
+    ops = [RenameOp(p, p.with_name("new_" + p.name)) for p in srcs]
+    ops[150] = RenameOp(srcs[150], tmp_path / "no_such_dir" / "x.txt")  # this one fails
+    result = execute(ops, workers=8)
+    assert not result.ok and result.rolled_back and not result.stuck
+    assert sorted(p.name for p in tmp_path.iterdir()) == sorted(p.name for p in srcs)

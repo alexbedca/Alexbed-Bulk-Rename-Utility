@@ -665,12 +665,12 @@ class MainWindow(QMainWindow):
         if QMessageBox.question(self, APP_NAME, text) != QMessageBox.Yes:
             return
         label = " → ".join(r.summary() for r in self.rules if r.enabled)[:120] or "Rename"
-        dlg = QProgressDialog("Renaming files…", None, 0, len(ops) * 2, self)
+        dlg = QProgressDialog("Renaming files…", None, 0, len(ops), self)
         dlg.setWindowModality(Qt.WindowModal)
         dlg.setMinimumDuration(400)
         dlg.setWindowTitle(APP_NAME)
         job = Job(0, lambda progress, _c: self.engine.apply_plan(ops, label, progress))
-        job.signals.progress.connect(lambda _g, d, _t: dlg.setValue(d))
+        job.signals.progress.connect(lambda _g, d, t: (dlg.setMaximum(t), dlg.setValue(d)))
         job.signals.result.connect(lambda _g, res: (dlg.close(), self._on_applied(res)))
         job.signals.error.connect(lambda _g, tb: (dlg.close(), self._job_error("Rename failed", tb)))
         self.runner.start(job)
