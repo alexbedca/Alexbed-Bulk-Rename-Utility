@@ -6,6 +6,7 @@ import re
 import zipfile
 from datetime import datetime
 from pathlib import Path
+from struct import error as struct_error
 from xml.etree import ElementTree as ET
 
 from alexed_bru.skills.metadata import MetaDict, MetadataProvider, register_provider
@@ -217,6 +218,7 @@ class ExifProvider(MetadataProvider):
         data: MetaDict = {
             "width": width,
             "height": height,
+            "resolution": f"{width}x{height}",
             "make": str(exif.get(0x010F, "")).strip("\x00 "),
             "model": str(exif.get(0x0110, "")).strip("\x00 "),
             "iso": sub.get(0x8827),
@@ -224,3 +226,194 @@ class ExifProvider(MetadataProvider):
             "year": taken.year if taken else None,
         }
         return {k: v for k, v in data.items() if v not in (None, "")}
+
+
+# --------------------------------------------------------------------------
+def _mp4_boxes(fh, start: int, end: int):
+    """Yield (type, payload_start, box_end) for ISO-BMFF boxes in [start, end)."""
+    import struct
+
+    pos = start
+    while pos + 8 <= end:
+        fh.seek(pos)
+        header = fh.read(8)
+        if len(header) < 8:
+            return
+        size, kind = struct.unpack(">I4s", header)
+        payload = pos + 8
+        if size == 1:  # 64-bit size
+            size = struct.unpack(">Q", fh.read(8))[0]
+            payload += 8
+        elif size == 0:  # box runs to end of file
+            size = end - pos
+        if size < 8:
+            return
+        yield kind.decode("latin-1"), payload, pos + size
+        pos += size
+
+
+def _mp4_dimensions(path: Path) -> tuple[int, int] | None:
+    """Largest track width/height from moov/trak/tkhd (no external tools)."""
+    import struct
+
+    best = None
+    with path.open("rb") as fh:
+        fh.seek(0, os.SEEK_END)
+        file_end = fh.tell()
+        for kind, start, end in _mp4_boxes(fh, 0, file_end):
+            if kind != "moov":
+                continue
+            for tkind, tstart, tend in _mp4_boxes(fh, start, end):
+                if tkind != "trak":
+                    continue
+                for hkind, hstart, _hend in _mp4_boxes(fh, tstart, tend):
+                    if hkind != "tkhd":
+                        continue
+                    fh.seek(hstart)
+                    version = fh.read(1)[0]
+                    fh.seek(hstart + (84 if version == 1 else 72) + 4)  # width/height are last 8 bytes
+                    w, h = struct.unpack(">II", fh.read(8))
+                    w, h = w >> 16, h >> 16  # 16.16 fixed point
+                    if w and h and (best is None or w * h > best[0] * best[1]):
+                        best = (w, h)
+    return best
+
+
+_QT_TEXT = {"©nam": "title", "©ART": "artist", "©aut": "artist", "©day": "date_raw",
+            "©des": "description", "©cmt": "comment", "©mak": "make", "©mod": "model",
+            "©swr": "software"}
+_MDTA = {"com.apple.quicktime.title": "title", "com.apple.quicktime.artist": "artist",
+         "com.apple.quicktime.creationdate": "date_raw", "com.apple.quicktime.make": "make",
+         "com.apple.quicktime.model": "model", "com.apple.quicktime.description": "description",
+         "com.apple.quicktime.software": "software", "title": "title", "artist": "artist",
+         "date": "date_raw", "creation_time": "date_raw"}
+
+
+def _quicktime_tags(path: Path) -> MetaDict:
+    """QuickTime metadata mutagen doesn't read: moov/udta (c)xxx atoms and Apple 'mdta' keys
+    (what iPhones write: creation date, make, model)."""
+    import struct
+
+    out: MetaDict = {}
+    with path.open("rb") as fh:
+        fh.seek(0, os.SEEK_END)
+        file_end = fh.tell()
+        moov = next(((s, e) for k, s, e in _mp4_boxes(fh, 0, file_end) if k == "moov"), None)
+        if moov is None:
+            return out
+        def parse_meta(start: int, end: int) -> None:
+            # ISO 'meta' starts with 4 zero bytes (version/flags); QuickTime 'meta'
+            # starts directly with a child box, whose size is never zero.
+            fh.seek(start)
+            body = start + 4 if fh.read(4) == b"\x00\x00\x00\x00" else start
+            children = list(_mp4_boxes(fh, body, end))
+            keys: list[str] = []
+            for k, s, e in children:
+                if k == "keys":
+                    fh.seek(s + 4)
+                    count = struct.unpack(">I", fh.read(4))[0]
+                    for _ in range(min(count, 512)):
+                        size, _ns = struct.unpack(">I4s", fh.read(8))
+                        keys.append(fh.read(max(0, size - 8)).decode("utf-8", "replace"))
+            for k, s, e in children:
+                if k != "ilst" or not keys:
+                    continue  # iTunes-style ilst (no keys) is mutagen's job
+                pos = s
+                while pos + 8 <= e:
+                    fh.seek(pos)
+                    size, idx = struct.unpack(">II", fh.read(8))
+                    if size < 8:
+                        break
+                    if 1 <= idx <= len(keys) and keys[idx - 1] in _MDTA:
+                        for dk, ds, de in _mp4_boxes(fh, pos + 8, pos + size):
+                            if dk == "data" and de - ds > 8:
+                                fh.seek(ds)
+                                dtype = struct.unpack(">I", fh.read(4))[0] & 0xFFFFFF
+                                fh.read(4)  # locale
+                                raw = fh.read(de - ds - 8)
+                                if dtype in (1, 4):  # UTF-8 / UTF-16 text
+                                    text = raw.decode("utf-8" if dtype == 1 else "utf-16-be", "replace")
+                                    out.setdefault(_MDTA[keys[idx - 1]], text.strip("\x00 "))
+                    pos += size
+
+        for kind, start, end in list(_mp4_boxes(fh, *moov)):
+            if kind == "meta":            # iPhone: moov/meta
+                parse_meta(start, end)
+            elif kind == "udta":
+                for k, s, e in list(_mp4_boxes(fh, start, end)):
+                    if k == "meta":       # ffmpeg & others: moov/udta/meta
+                        parse_meta(s, e)
+                    elif k in _QT_TEXT and e - s > 4:
+                        fh.seek(s)
+                        n, _lang = struct.unpack(">HH", fh.read(4))
+                        if 0 < n <= e - s - 4:  # QuickTime text atom
+                            out.setdefault(_QT_TEXT[k], fh.read(n).decode("utf-8", "replace").strip("\x00 "))
+    raw_date = out.pop("date_raw", None)
+    if raw_date:
+        parsed = _iso_date(raw_date) or (datetime(int(raw_date[:4]), 1, 1) if raw_date[:4].isdigit() else None)
+        if parsed:
+            out["date"] = parsed
+            out["year"] = parsed.year
+    return {k: v for k, v in out.items() if v not in (None, "")}
+
+
+@register_provider
+class VideoProvider(MetadataProvider):
+    """MP4 / M4V / MOV / 3GP: iTunes-style tags plus duration and resolution."""
+
+    namespace = "video"
+    label = "Video"
+    extensions = frozenset({"mp4", "m4v", "mov", "3gp", "3g2"})
+
+    def read(self, path: Path) -> MetaDict:
+        from mutagen.mp4 import MP4
+
+        data: MetaDict = {}
+        try:
+            mp4 = MP4(path)
+        except Exception:  # noqa: BLE001  (untagged/odd files still get resolution)
+            mp4 = None
+        if mp4 is not None:
+            tags = mp4.tags or {}
+
+            def tag(key: str):
+                value = tags.get(key)
+                if not value:
+                    return None
+                v = value[0]
+                return v[0] if isinstance(v, tuple) else v  # trkn/disk are (n, total)
+
+            data.update({
+                "title": tag("\xa9nam"), "artist": tag("\xa9ART"), "album": tag("\xa9alb"),
+                "genre": tag("\xa9gen"), "comment": tag("\xa9cmt"), "description": tag("desc"),
+                "show": tag("tvsh"), "season": tag("tvsn"), "episode": tag("tves"),
+                "episode_id": tag("tven"), "network": tag("tvnn"),
+                "year": _first_int(tag("\xa9day")), "track": tag("trkn"),
+            })
+            length = getattr(mp4.info, "length", 0) or 0
+            if length:
+                h, rem = divmod(int(length), 3600)
+                m, s = divmod(rem, 60)
+                data["duration"] = f"{h}.{m:02d}.{s:02d}" if h else f"{m}.{s:02d}"
+                data["seconds"] = int(length)
+        try:
+            for key, value in _quicktime_tags(path).items():
+                if data.get(key) in (None, ""):  # iTunes tags (via mutagen) win
+                    data[key] = value
+        except (OSError, ValueError, struct_error):
+            pass
+        dims = _mp4_dimensions(path)
+        if dims:
+            w, h = dims
+            data.update(width=w, height=h, resolution=f"{w}x{h}", quality=_quality(w, h))
+        return {k: (str(v).strip() if isinstance(v, str) else v) for k, v in data.items()
+                if v not in (None, "")}
+
+
+def _quality(w: int, h: int) -> str:
+    short = min(w, h)
+    for limit, label in ((2160, "2160p"), (1440, "1440p"), (1080, "1080p"), (720, "720p"),
+                         (576, "576p"), (480, "480p"), (360, "360p")):
+        if short >= limit * 0.95:
+            return label
+    return f"{short}p"

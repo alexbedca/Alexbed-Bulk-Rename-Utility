@@ -291,8 +291,13 @@ class FilterProxy(QSortFilterProxyModel):
         self._mode = "all"
 
     def set_filter(self, text: str, mode: str) -> None:
-        self._text, self._mode = text.casefold(), mode
-        self.invalidateFilter()
+        if hasattr(self, "beginFilterChange"):  # Qt >= 6.10
+            self.beginFilterChange()
+            self._text, self._mode = text.casefold(), mode
+            self.endFilterChange(QSortFilterProxyModel.Direction.Rows)
+        else:
+            self._text, self._mode = text.casefold(), mode
+            self.invalidateRowsFilter()
 
     def filterAcceptsRow(self, row: int, parent) -> bool:
         model: RenameModel = self.sourceModel()

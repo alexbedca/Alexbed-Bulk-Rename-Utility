@@ -40,6 +40,36 @@ Set `ALEXED_BRU_DATA` to store them somewhere else.
 | Ctrl+F | Filter the preview |
 | Delete | Remove selected files / rule |
 
+## Rules
+
+| Rule | What it does |
+|---|---|
+| Find & Replace | Replace all / first / last occurrence. Leave the replacement empty to delete the text |
+| RegEx Replace | Python regex with live group highlighting; `\1`, `\g<name>`, `$1` |
+| Add Prefix / Suffix | Text or tags before/after the name; won't add the same text twice |
+| Change Case | Title, Smart Title, UPPER, lower, Sentence, Swap |
+| Insert Text | At any position from the start or end |
+| Remove | Character range, specific characters, digits, symbols, `(…)`/`[…]` text, accents |
+| Trim & Clean | Whitespace, `_`/`.` to spaces, cut N characters |
+| Pad Numbers | `Track 7` → `Track 07` |
+| Counter / Numbering | Prefix, suffix, replace name, insert, **renumber existing numbers**; start, step, padding, restart per folder |
+| New Name from Template | Build the whole name from tags |
+| Extension | lower / UPPER / replace / append / remove |
+
+Every rule can target the name, the extension, or both, and works on any file type.
+
+## Supported metadata
+
+| Kind | Formats | Examples |
+|---|---|---|
+| Audio | MP3 (ID3v1/v2), FLAC, OGG/Opus, M4A/AAC, WMA, WAV, AIFF, APE, WavPack, DSF | artist, album, title, track, disc, year, genre, bitrate, duration |
+| Video | MP4, M4V, MOV, 3GP (iTunes tags, QuickTime atoms, iPhone `mdta` keys) | title, show, season, episode, date recorded, make/model, resolution, quality (1080p) |
+| Documents | PDF, DOCX/XLSX/PPTX (+ macro variants) | title, author, subject, created, modified, pages |
+| Images | JPEG, TIFF, PNG, WebP, HEIC*, DNG* (EXIF) | date taken, camera make/model, width/height, ISO |
+| Any file | system | created, modified, size, parent/grandparent folder |
+
+\* if Pillow can open it. MKV/AVI/WebM tags aren't read yet; system tags still work for them.
+
 ## Tags
 
 You can use tags in any field that has a ‹› button: Template, Replace with, Insert.
@@ -49,6 +79,7 @@ You can use tags in any field that has a ‹› button: Template, Replace with, 
 | `<name>` `<ext>` `<folder>` | Original name, extension, parent folder |
 | `<num:3>` `<fnum:2>` | Position in batch / in folder, zero-padded |
 | `<artist>` `<album>` `<title>` `<track:2>` `<year>` `<genre>` | **Smart tags.** Audio tags first, then document/EXIF data, then file dates |
+| `<show>` `<season:2>` `<episode:2>` `<quality>` `<resolution>` `<duration>` | Video tags |
 | `<date:%Y-%m-%d>` `<created:…>` `<modified:…>` | Dates with any strftime format |
 | `<audio:key>` `<doc:key>` `<exif:key>` `<sys:key>` | Explicit namespace. See the *File metadata* panel for every key |
 

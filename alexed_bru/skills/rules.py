@@ -24,9 +24,10 @@ OCCURRENCES = [("all", "All occurrences"), ("first", "First only"), ("last", "La
 @dataclass
 class ReplaceRule(TargetedRule):
     TYPE = "replace"
-    LABEL = "Search & Replace"
+    LABEL = "Find & Replace"
     CATEGORY = "Text"
-    DESCRIPTION = "Replace literal text. The replacement can contain <tags>."
+    DESCRIPTION = ("Find literal text and replace all occurrences (or just the first/last). "
+                   "Leave 'Replace with' empty to delete it. The replacement can contain <tags>.")
 
     find: str = param("", "Find", TEXT)
     replace: str = param("", "Replace with", TEMPLATE)
@@ -34,7 +35,7 @@ class ReplaceRule(TargetedRule):
     occurrence: str = param("all", "Occurrence", CHOICE, choices=OCCURRENCES)
 
     def summary(self) -> str:
-        return f"“{self.find}” → “{self.replace}”" if self.find else "Search & Replace (empty)"
+        return f"“{self.find}” → “{self.replace}”" if self.find else "Find & Replace (empty)"
 
     def transform(self, text: str, ctx) -> str:
         if not self.find:
@@ -200,6 +201,34 @@ class InsertRule(TargetedRule):
         return text[:idx] + value + text[idx:]
 
 
+@register_rule
+@dataclass
+class PrefixSuffixRule(TargetedRule):
+    TYPE = "affix"
+    LABEL = "Add Prefix / Suffix"
+    CATEGORY = "Text"
+    DESCRIPTION = "Add text before and/or after the name. Both fields accept <tags>."
+
+    prefix: str = param("", "Prefix", TEMPLATE)
+    suffix: str = param("", "Suffix", TEMPLATE)
+    skip_if_present: bool = param(True, "Don't add twice", BOOL,
+                                  help="Skip when the name already starts/ends with it")
+
+    def summary(self) -> str:
+        if not (self.prefix or self.suffix):
+            return "Add Prefix / Suffix (empty)"
+        return f"“{self.prefix}” + name + “{self.suffix}”"
+
+    def transform(self, text: str, ctx) -> str:
+        pre = tags.expand(self.prefix, ctx)
+        suf = tags.expand(self.suffix, ctx)
+        if pre and not (self.skip_if_present and text.startswith(pre)):
+            text = pre + text
+        if suf and not (self.skip_if_present and text.endswith(suf)):
+            text = text + suf
+        return text
+
+
 REMOVE_MODES = [("range", "Character range"), ("chars", "Specific characters"),
                 ("digits", "All digits"), ("symbols", "Symbols & punctuation"),
                 ("brackets", "Bracketed text (…) […] {…}"), ("accents", "Accents (é → e)")]
@@ -325,8 +354,9 @@ class PadNumbersRule(TargetedRule):
 # ==========================================================================
 # Counter
 # ==========================================================================
-COUNTER_POS = [("prefix", "Prefix"), ("suffix", "Suffix"), ("replace", "Replace name"),
-               ("index", "At position")]
+COUNTER_POS = [("prefix", "Prefix"), ("suffix", "Suffix"), ("replace", "Replace whole name"),
+               ("index", "At position"), ("renumber_first", "Renumber: replace first number"),
+               ("renumber_last", "Renumber: replace last number")]
 
 
 @register_rule
@@ -335,7 +365,9 @@ class CounterRule(TargetedRule):
     TYPE = "counter"
     LABEL = "Counter / Numbering"
     CATEGORY = "Numbering"
-    DESCRIPTION = "Sequential numbers with start, step, padding and optional reset per folder."
+    DESCRIPTION = ("Sequential numbers with start, step, padding and optional reset per folder. "
+                   "Renumber modes swap an existing number for the new sequence "
+                   "(files without a number get it as a prefix).")
 
     start: int = param(1, "Start at", INT, minimum=-999999, maximum=999999)
     step: int = param(1, "Step", INT, minimum=-9999, maximum=9999)
@@ -356,6 +388,12 @@ class CounterRule(TargetedRule):
         number = ("-" if value < 0 else "") + str(abs(value)).zfill(self.padding)
         if self.placement == "replace":
             return number
+        if self.placement in ("renumber_first", "renumber_last"):
+            found = list(re.finditer(r"\d+", text))
+            if not found:
+                return f"{number}{self.separator}{text}"
+            m = found[0] if self.placement == "renumber_first" else found[-1]
+            return text[:m.start()] + number + text[m.end():]
         if self.placement == "suffix":
             return f"{text}{self.separator}{number}"
         if self.placement == "index":

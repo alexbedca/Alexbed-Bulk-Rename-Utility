@@ -52,6 +52,16 @@ def samples() -> dict[str, list[Rule]]:
             r.TemplateRule(template="<modified:%Y-%m-%d> <name>"),
             r.TrimRule(separators_to_spaces=True),
         ],
+        "Video: TV episodes (Show S01E01 - Title)": [
+            r.TemplateRule(template="<show> S<season:2>E<episode:2> - <title>")],
+        "Video: phone clips by recording date": [
+            r.TemplateRule(template="<date:%Y-%m-%d_%H%M%S>"),
+            r.CounterRule(placement="suffix", separator="_", padding=2, reset_per_folder=True),
+        ],
+        "Video: add quality tag [1080p]": [r.PrefixSuffixRule(suffix=" [<quality>]")],
+        "Renumber existing numbers (01, 02, ...)": [
+            r.CounterRule(placement="renumber_first", padding=2, reset_per_folder=True)],
+        "Add date prefix": [r.PrefixSuffixRule(prefix="<modified:%Y-%m-%d> ")],
         "Numbered sequence per folder": [
             r.CounterRule(placement="replace", padding=3, reset_per_folder=True),
             r.InsertRule(text="<folder> - ", position=0),

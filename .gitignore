@@ -6,3 +6,4 @@ build/
 dist/
 *.spec
 AlexedBRU_data/
+test_library/

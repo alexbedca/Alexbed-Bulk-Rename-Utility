@@ -36,18 +36,24 @@ BUILTIN_HEADS = {"name", "ext", "folder", "num", "fnum"}
 # works on an MP3 (audio tags), a PDF (document info) or a bare file
 # (system dates).
 SMART_ALIASES: dict[str, list[tuple[str, str]]] = {
-    "artist": [("audio", "artist"), ("audio", "albumartist"), ("doc", "author")],
+    "artist": [("audio", "artist"), ("audio", "albumartist"), ("video", "artist"), ("doc", "author")],
     "albumartist": [("audio", "albumartist"), ("audio", "artist")],
-    "album": [("audio", "album")],
-    "title": [("audio", "title"), ("doc", "title")],
-    "track": [("audio", "track")],
+    "album": [("audio", "album"), ("video", "album")],
+    "title": [("audio", "title"), ("video", "title"), ("doc", "title")],
+    "track": [("audio", "track"), ("video", "track")],
     "disc": [("audio", "disc")],
-    "genre": [("audio", "genre")],
-    "year": [("audio", "year"), ("exif", "year"), ("doc", "year"), ("sys", "created_year")],
-    "date": [("exif", "date"), ("doc", "created"), ("sys", "created")],
+    "genre": [("audio", "genre"), ("video", "genre")],
+    "year": [("audio", "year"), ("video", "year"), ("exif", "year"), ("doc", "year"), ("sys", "created_year")],
+    "date": [("exif", "date"), ("video", "date"), ("doc", "created"), ("sys", "created")],
     "created": [("sys", "created")],
     "modified": [("sys", "modified")],
     "author": [("doc", "author"), ("audio", "artist")],
+    "duration": [("video", "duration"), ("audio", "duration")],
+    "resolution": [("video", "resolution"), ("exif", "resolution")],
+    "quality": [("video", "quality")],
+    "show": [("video", "show")],
+    "season": [("video", "season")],
+    "episode": [("video", "episode")],
 }
 
 
@@ -152,6 +158,15 @@ TAG_CATALOGUE: list[tuple[str, list[tuple[str, str]]]] = [
         ("<date:%Y-%m-%d>", "EXIF taken → document created → file created"),
         ("<created:%Y-%m-%d>", "File created"),
         ("<modified:%Y-%m-%d>", "File modified"),
+    ]),
+    ("Video", [
+        ("<video:title>", "Title"),
+        ("<show>", "TV show"),
+        ("S<season:2>E<episode:2>", "Season/episode, padded"),
+        ("<quality>", "1080p, 720p, ..."),
+        ("<resolution>", "Width x height"),
+        ("<duration>", "Duration (m.ss)"),
+        ("<video:year>", "Year"),
     ]),
     ("System", [
         ("<sys:modified:%Y-%m-%d>", "Modified date"),
