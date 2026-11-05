@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="t">
+  <title id="t">Alexed Bulk Rename Utility</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1E2344"/>
+      <stop offset="1" stop-color="#0A0C18"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#22D3EE"/>
+      <stop offset="0.5" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#C084FC"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.3" cy="0.15" r="0.8">
+      <stop offset="0" stop-color="#6366F1" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#6366F1" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- App tile -->
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#glow)"/>
+  <rect x="4" y="4" width="504" height="504" rx="108" fill="none" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="2"/>
+
+  <!-- Ghost file rows: the "batch" being renamed -->
+  <g fill="#FFFFFF">
+    <rect x="84"  y="108" width="96" height="18" rx="9" opacity="0.10"/>
+    <rect x="84"  y="142" width="64" height="18" rx="9" opacity="0.07"/>
+    <rect x="84"  y="176" width="40" height="18" rx="9" opacity="0.05"/>
+  </g>
+
+  <!-- The "A" monogram -->
+  <path d="M130 404 L236 112 L342 404" fill="none" stroke="url(#accent)" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Crossbar = rename arrow, knocked out of the A -->
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M158 306 H384 M354 266 L400 306 L354 346" fill="none" stroke="#12152A" stroke-width="66"/>
+    <path d="M158 306 H384 M354 266 L400 306 L354 346" fill="none" stroke="#FFFFFF" stroke-width="34"/>
+  </g>
+</svg>
