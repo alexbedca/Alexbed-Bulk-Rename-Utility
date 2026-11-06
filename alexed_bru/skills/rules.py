@@ -357,6 +357,8 @@ class PadNumbersRule(TargetedRule):
 COUNTER_POS = [("prefix", "Prefix"), ("suffix", "Suffix"), ("replace", "Replace whole name"),
                ("index", "At position"), ("renumber_first", "Renumber: replace first number"),
                ("renumber_last", "Renumber: replace last number")]
+NO_NUMBER = [("end", "Add the number at the end"), ("start", "Add the number at the start"),
+             ("skip", "Leave the name unchanged")]
 
 
 @register_rule
@@ -366,8 +368,8 @@ class CounterRule(TargetedRule):
     LABEL = "Counter / Numbering"
     CATEGORY = "Numbering"
     DESCRIPTION = ("Sequential numbers with start, step, padding and optional reset per folder. "
-                   "Renumber modes swap an existing number for the new sequence "
-                   "(files without a number get it as a prefix).")
+                   "Renumber modes swap an existing number for the new sequence; "
+                   "choose what happens to files that have no number.")
 
     start: int = param(1, "Start at", INT, minimum=-999999, maximum=999999)
     step: int = param(1, "Step", INT, minimum=-9999, maximum=9999)
@@ -376,6 +378,7 @@ class CounterRule(TargetedRule):
     position: int = param(0, "Position (for 'At position')", INT, minimum=0, maximum=9999)
     separator: str = param(" - ", "Separator", TEXT)
     reset_per_folder: bool = param(False, "Restart in each folder", BOOL)
+    no_number: str = param("end", "Renumber: files without a number", CHOICE, choices=NO_NUMBER)
 
     def summary(self) -> str:
         sample = str(self.start).zfill(self.padding)
@@ -391,7 +394,13 @@ class CounterRule(TargetedRule):
         if self.placement in ("renumber_first", "renumber_last"):
             found = list(re.finditer(r"\d+", text))
             if not found:
-                return f"{number}{self.separator}{text}"
+                # 'Photo.png' beside 'Photo 2.png': give it a number in the same
+                # style rather than leaving the batch half renumbered.
+                if self.no_number == "skip":
+                    return text
+                if self.no_number == "start":
+                    return f"{number}{self.separator}{text}"
+                return f"{text}{self.separator}{number}"
             m = found[0] if self.placement == "renumber_first" else found[-1]
             return text[:m.start()] + number + text[m.end():]
         if self.placement == "suffix":

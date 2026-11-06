@@ -60,7 +60,8 @@ def samples() -> dict[str, list[Rule]]:
         ],
         "Video: add quality tag [1080p]": [r.PrefixSuffixRule(suffix=" [<quality>]")],
         "Renumber existing numbers (01, 02, ...)": [
-            r.CounterRule(placement="renumber_first", padding=2, reset_per_folder=True)],
+            r.CounterRule(placement="renumber_first", padding=2, separator=" ",
+                          reset_per_folder=True, no_number="end")],
         "Add date prefix": [r.PrefixSuffixRule(prefix="<modified:%Y-%m-%d> ")],
         "Numbered sequence per folder": [
             r.CounterRule(placement="replace", padding=3, reset_per_folder=True),

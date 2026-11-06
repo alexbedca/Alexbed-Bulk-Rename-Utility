@@ -28,7 +28,7 @@ from alexed_bru.skills.metadata import PROVIDERS, MetadataStore
 from alexed_bru.skills.rules import RegexRule, ReplaceRule, compile_regex
 from alexed_bru.ui.preview_model import (COL_FOLDER, COL_INCLUDE, COL_INFO, COL_NEW, COL_ORIGINAL,
                                          COL_STATUS, FilterProxy, HighlightDelegate, RenameModel,
-                                         path_key)
+                                         natural_name, path_key)
 from alexed_bru.ui.rule_editor import RuleEditor, RuleRow, RuleStack, rules_menu
 from alexed_bru.ui.theme import C, dark_title_bar
 from alexed_bru.ui.workers import Job, JobRunner
@@ -48,9 +48,9 @@ def scan(paths: list[Path], recursive: bool, cancelled) -> list[Path]:
                     if cancelled():
                         return out
                     dirs.sort(key=_natural)
-                    out.extend(Path(root) / f for f in sorted(files, key=_natural))
+                    out.extend(Path(root) / f for f in sorted(files, key=natural_name))
             else:
-                out.extend(sorted((c for c in p.iterdir() if c.is_file()), key=lambda c: _natural(c.name)))
+                out.extend(sorted((c for c in p.iterdir() if c.is_file()), key=lambda c: natural_name(c.name)))
     return [p for p in out if not p.name.startswith(SKIP_PREFIX)]
 
 

@@ -237,9 +237,9 @@ class RenameModel(QAbstractTableModel):
         keyfuncs = {
             COL_INCLUDE: lambda ip: not ip[0].include,
             COL_STATUS: lambda ip: -int(ip[1].status),
-            COL_ORIGINAL: lambda ip: _natural(ip[0].name),
-            COL_NEW: lambda ip: _natural(ip[1].new_name),
-            COL_FOLDER: lambda ip: (_natural(str(ip[0].folder)), _natural(ip[0].name)),
+            COL_ORIGINAL: lambda ip: natural_name(ip[0].name),
+            COL_NEW: lambda ip: natural_name(ip[1].new_name),
+            COL_FOLDER: lambda ip: (_natural(str(ip[0].folder)), natural_name(ip[0].name)),
             COL_INFO: lambda ip: ip[1].message,
         }
         key = keyfuncs.get(column)
@@ -257,6 +257,14 @@ def _natural(text: str):
     """Natural sort: 'Track 2' before 'Track 10'."""
     import re
     return [int(t) if t.isdigit() else t.casefold() for t in re.split(r"(\d+)", text)]
+
+
+def natural_name(name: str):
+    """Natural sort of a file name by stem, then extension, so 'Photo.png' comes
+    before 'Photo 2.png' (comparing whole names would put ' ' before '.')."""
+    from alexed_bru.core.models import split_name
+    stem, ext = split_name(name)
+    return (_natural(stem), _natural(ext))
 
 
 def diff_spans(old: str, new: str) -> list[tuple[int, int, int]]:

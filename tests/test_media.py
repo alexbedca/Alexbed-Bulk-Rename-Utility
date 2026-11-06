@@ -140,7 +140,23 @@ def test_find_and_replace_all_vs_first(tmp_path):
 def test_renumber_existing_numbers(tmp_path):
     paths = mixed(tmp_path)
     assert proposed(paths, CounterRule(placement="renumber_first", start=1, padding=2)) == [
-        "Holiday 01.jpg", "Report v02.pdf", "Track 03 - intro.mp3", "04 - notes.txt", "Clip 05.mp4"]
+        "Holiday 01.jpg", "Report v02.pdf", "Track 03 - intro.mp3", "notes - 04.txt", "Clip 05.mp4"]
+    assert proposed(paths, CounterRule(placement="renumber_first", padding=2, no_number="start"))[3] \
+        == "04 - notes.txt"
+    assert proposed(paths, CounterRule(placement="renumber_first", padding=2, no_number="skip"))[3] \
+        == "notes.txt"
+
+
+def test_renumber_preset_on_copies(tmp_path):
+    """'ALMP.png', 'ALMP preview.png', 'ALMP preview 2.png': natural order, same style."""
+    from alexed_bru.core import presets
+    from alexed_bru.ui.main_window import scan
+    for n in ("ALMP  preview 2.png", "ALMP  preview.png", "ALMP.png"):
+        (tmp_path / n).write_bytes(b"")
+    paths = scan([tmp_path], recursive=False, cancelled=lambda: False)
+    assert [p.name for p in paths] == ["ALMP.png", "ALMP  preview.png", "ALMP  preview 2.png"]
+    rules = presets.samples()["Renumber existing numbers (01, 02, ...)"]
+    assert proposed(paths, *rules) == ["ALMP 01.png", "ALMP  preview 02.png", "ALMP  preview 03.png"]
 
 
 def test_renumber_last_and_counter_suffix(tmp_path):
