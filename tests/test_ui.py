@@ -144,6 +144,43 @@ def test_editor_builds_for_every_rule_type(app, win):
     assert len(win.rules) == len(RULE_REGISTRY)
 
 
+def test_regex_examples_menu_and_guide(app, win, tmp_path):
+    from alexed_bru.ui.regex_help import guide_html
+    load(app, win, library(tmp_path) / "B")
+    win.add_rule(RegexRule)
+    title, sample, params = RegexRule.EXAMPLES[0]
+    win.editor.use_example(params)
+    assert win.rules[0].pattern == params["pattern"]
+    assert pump(app, lambda: idle(win))
+    html = guide_html()
+    from html import escape
+    assert "Worked example" in html and all(escape(t) in html for t, _s, _p in RegexRule.EXAMPLES)
+
+
+def test_preview_marks_added_and_removed_text():
+    from alexed_bru.ui.preview_model import ADDED, REMOVED, diff_spans, removed_spans
+    old, new = "Song (Live).mp3", "Song.mp3"
+    assert removed_spans(old, new) == [(4, 11, REMOVED)]          # " (Live)" struck through
+    assert diff_spans(old, new) == []                             # nothing added
+    assert diff_spans("ALMP.png", "ALMP 01.png") == [(4, 7, ADDED)]
+    assert diff_spans("abc.txt", "xyz.txt") == [(0, 3, ADDED)]    # all-new name: one clear block
+
+
+def test_settings_fit_the_narrow_panel(app, win):
+    """Long options must not widen the form beyond the panel (they were cut off)."""
+    from PySide6.QtWidgets import QComboBox
+    win.add_rule(CounterRule)
+    pump(app, timeout=0.05)
+    combos = win.editor.findChildren(QComboBox)
+    assert combos
+    for cb in combos:
+        longest = max(cb.fontMetrics().horizontalAdvance(cb.itemText(i)) for i in range(cb.count()))
+        assert cb.minimumSizeHint().width() < longest or longest < 120
+        cb.showPopup()
+        assert cb.view().minimumWidth() >= longest  # the open list still shows full text
+        cb.hidePopup()
+
+
 def test_invalid_regex_shows_error_and_is_ignored(app, win, tmp_path):
     load(app, win, library(tmp_path))
     win.add_rule(RegexRule)

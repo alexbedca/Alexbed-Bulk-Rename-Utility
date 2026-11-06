@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Alexander Bediako
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Transactional renaming: all-or-nothing.
 
 Only operations whose target is currently occupied by another file in the

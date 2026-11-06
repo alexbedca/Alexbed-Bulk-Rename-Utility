@@ -2,10 +2,25 @@
 
 ![logo](assets/branding/logo-horizontal.svg)
 
-A portable, transactional bulk file renamer for big music libraries and deeply nested document archives.
-It's a single `.exe` with no installer and no registry footprint.
+A portable, transactional bulk file renamer for big music libraries, photo and video folders and deeply nested document archives.
+It's a single `.exe` for Windows 10/11, with no installer and no registry footprint.
 
-## Run
+**Version:** 1.0.0 &nbsp;|&nbsp; **Author:** Alexander Bediako &nbsp;|&nbsp; **Licence:** [GPL-3.0-or-later](LICENSE)
+
+![Main window: rules on the left, live preview on the right](docs/screenshots/main-window.png)
+
+- **See every change before it happens.** The preview updates as you type. Added text is highlighted in cyan, and removed text is struck through in red.
+- **Nothing touches the disk until you press Rename.** Renames run as one transaction: if anything fails, everything is rolled back.
+- **Undo any batch later,** even after closing the app.
+- **Rename from tags:** ID3/FLAC/MP4 audio tags, video tags, EXIF dates and PDF/Office properties.
+- **Fast with big folders:** 10,000 files preview in a fraction of a second.
+
+## Download
+
+Get `AlexedBulkRename.exe` from the [latest release](../../releases/latest) and run it. No install is needed.
+Windows SmartScreen may warn about an unknown publisher, because the exe isn't code-signed. Choose *More info → Run anyway*.
+
+## Run from source
 
 ```powershell
 python -m venv .venv
@@ -26,9 +41,25 @@ Set `ALEXED_BRU_DATA` to store them somewhere else.
 
 1. Drop files or folders onto the window (subfolders are included if that box is ticked).
 2. Add rules on the left. They run top to bottom. Drag to reorder, untick to bypass.
-3. The preview updates as you type. Blue = will rename, amber = warning, red = error (skipped).
-   Regex matches are highlighted in the *Original* column, and the changed parts in *New name*.
+3. The preview updates as you type:
+   - *New name*: added or changed characters are highlighted in **cyan**.
+   - *Original name*: characters that will be removed are **struck through in red**.
+   - While a RegEx or Find & Replace rule is selected, *Original name* shows what it matches instead, with each capture group in its own colour.
+   - Status dots: blue = will rename, amber = warning, red = error (skipped).
 4. Click **Rename N files**. You can undo any batch later from **History**, even after restarting the app.
+
+## Regular expressions (RegEx)
+
+New to RegEx? Open a **RegEx Replace** rule:
+
+- **Examples** fills in a ready-made pattern, such as removing track numbers, swapping "Artist - Title", or turning `IMG_20230601_142209` into a date. You see the result in the preview straight away.
+- **RegEx guide** opens a cheat sheet. The same guide is in [docs/REGEX_GUIDE.md](docs/REGEX_GUIDE.md).
+
+![RegEx capture groups highlighted in the preview](docs/screenshots/regex-groups.png)
+
+| Examples menu | RegEx guide |
+|---|---|
+| ![Examples menu](docs/screenshots/regex-examples.png) | ![RegEx guide](docs/screenshots/regex-guide.png) |
 
 | Shortcut | Action |
 |---|---|
@@ -84,6 +115,8 @@ You can use tags in any field that has a ‹› button: Template, Replace with, 
 | `<audio:key>` `<doc:key>` `<exif:key>` `<sys:key>` | Explicit namespace. See the *File metadata* panel for every key |
 
 Tag values are cleaned up automatically: `AC/DC` becomes `AC-DC`, never a path separator.
+
+![Renaming music from its tags](docs/screenshots/smart-tags.png)
 Regex replacements accept `\1`, `\g<name>` and `$1`.
 
 ## Using the engine without the UI
@@ -100,7 +133,16 @@ engine.apply(paths)   # two-phase, rolls back on any failure
 
 ## Project docs
 
+- [docs/REGEX_GUIDE.md](docs/REGEX_GUIDE.md): RegEx cheat sheet, worked example and recipes
 - [docs/RESEARCH.md](docs/RESEARCH.md): competitive analysis, the UX flaws we fix, feature checklist
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): stack, layout, data flow, safety model, how to add skills
 
 Tests: `.venv\Scripts\python -m pytest` (about 10s). The real 10,000-file rename/undo runs are marked slow: `.venv\Scripts\python -m pytest -m slow` (a few minutes; on this PC rename and undo each took about 4s, the rest is creating the files).
+
+## Licence
+
+Alexed Bulk Rename Utility is free software, released under the **GNU General Public License v3.0 or later**.
+You may use, study, share and change it. See [LICENSE](LICENSE).
+
+It's built with free software such as Qt/PySide6, mutagen, pypdf and Pillow.
+Their licences are listed in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).

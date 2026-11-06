@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Alexander Bediako
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Small line icons drawn from inline SVG.
 
 Buttons use these instead of Unicode symbols such as an undo arrow. If the UI

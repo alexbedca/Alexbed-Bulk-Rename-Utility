@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Alexander Bediako
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Name and collision validation, run before anything touches the disk."""
 from __future__ import annotations
 

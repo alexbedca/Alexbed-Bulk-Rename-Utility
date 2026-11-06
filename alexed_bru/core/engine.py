@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Alexander Bediako
+# SPDX-License-Identifier: GPL-3.0-or-later
 """RenameEngine: the UI-independent facade over the whole renaming core.
 
     from alexed_bru.core.engine import RenameEngine

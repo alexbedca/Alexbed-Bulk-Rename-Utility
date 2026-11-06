@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Alexander Bediako
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Background jobs on Qt's global thread pool.
 
 A Job wraps ``fn(progress, cancelled) -> result``. Every job carries a

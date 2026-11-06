@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Alexander Bediako
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Main window: rules on the left, live preview grid on the right."""
 from __future__ import annotations
 
@@ -31,7 +33,7 @@ from alexed_bru.ui.preview_model import (COL_FOLDER, COL_INCLUDE, COL_INFO, COL_
                                          natural_name, path_key)
 from alexed_bru.ui.icons import icon
 from alexed_bru.ui.rule_editor import RuleEditor, RuleRow, RuleStack, rules_menu
-from alexed_bru.ui.theme import C, dark_title_bar
+from alexed_bru.ui.theme import ADDED_COLOUR, REMOVED_COLOUR, C, dark_title_bar
 from alexed_bru.ui.workers import Job, JobRunner
 
 SKIP_PREFIX = ".~abru-"  # our own temp files, never list them
@@ -53,6 +55,12 @@ def scan(paths: list[Path], recursive: bool, cancelled) -> list[Path]:
             else:
                 out.extend(sorted((c for c in p.iterdir() if c.is_file()), key=lambda c: natural_name(c.name)))
     return [p for p in out if not p.name.startswith(SKIP_PREFIX)]
+
+
+def _rgba(hex_colour: str, alpha: float) -> str:
+    """'#RRGGBB' -> 'rgba(r,g,b,a)' (Qt reads 8-digit hex as #AARRGGBB)."""
+    r, g, b = (int(hex_colour[i:i + 2], 16) for i in (1, 3, 5))
+    return f"rgba({r},{g},{b},{alpha})"
 
 
 def _natural(text: str):
@@ -191,6 +199,7 @@ class MainWindow(QMainWindow):
         presets_btn.setLayoutDirection(Qt.RightToLeft)  # chevron after the text
         presets_btn.setPopupMode(QToolButton.InstantPopup)
         self.presets_menu = QMenu(presets_btn)
+        self.presets_menu.setLayoutDirection(Qt.LeftToRight)  # the button is RTL only for its arrow
         self.presets_menu.aboutToShow.connect(self._fill_presets_menu)
         presets_btn.setMenu(self.presets_menu)
         lay.addWidget(presets_btn)
@@ -261,7 +270,7 @@ class MainWindow(QMainWindow):
 
         split.addWidget(stack_panel)
         split.addWidget(editor_panel)
-        split.setSizes([300, 360])
+        split.setSizes([290, 420])  # room for ~4 rules; settings get the larger share
         split.setMinimumWidth(340)
         return split
 
@@ -287,6 +296,17 @@ class MainWindow(QMainWindow):
         bar.addWidget(self.search)
         bar.addWidget(self.filter_mode)
         bar.addStretch(1)
+        # Key for the preview highlighting, shown while there is something to rename.
+        self.legend = QLabel(
+            f"<span style='background:{_rgba(ADDED_COLOUR, 0.35)}; color:white; "
+            f"text-decoration:underline'>&nbsp;added&nbsp;</span>&nbsp;&nbsp;"
+            f"<span style='background:{_rgba(REMOVED_COLOUR, 0.2)}; color:{REMOVED_COLOUR}; "
+            f"text-decoration:line-through'>&nbsp;removed&nbsp;</span>")
+        self.legend.setToolTip("New name: added or changed characters.\n"
+                               "Original name: characters the rename removes.")
+        self.legend.setStyleSheet("font-size:8.5pt; margin-right:14px;")
+        self.legend.hide()
+        bar.addWidget(self.legend)
         self.counts = QLabel()
         self.counts.setObjectName("Counts")
         bar.addWidget(self.counts)
@@ -638,6 +658,7 @@ class MainWindow(QMainWindow):
         if c[Status.SUCCESS]:
             parts.append(f"<span style='color:{C.OK}'>{c[Status.SUCCESS]:,} renamed</span>")
         self.counts.setText("  ·  ".join(parts))
+        self.legend.setVisible(pending > 0)
         self.apply_btn.setEnabled(pending > 0)
         self.apply_btn.setText(f"Rename {pending:,} file{'s' if pending != 1 else ''}" if pending
                                else "Rename files")

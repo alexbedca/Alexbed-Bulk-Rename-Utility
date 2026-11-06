@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Alexander Bediako
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Rule stack list and the auto-generated parameter editor."""
 from __future__ import annotations
 
@@ -11,6 +13,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QFormLay
 
 from alexed_bru.core.tags import TAG_CATALOGUE
 from alexed_bru.skills.base import BOOL, CHOICE, INT, REGEX, RULE_REGISTRY, TEMPLATE, Rule
+from alexed_bru.ui.icons import icon
 from alexed_bru.ui.theme import C
 
 
@@ -162,11 +165,16 @@ class RuleEditor(QWidget):
         desc.setWordWrap(True)
         self._lay.addWidget(title)
         self._lay.addWidget(desc)
+        if rule.EXAMPLES:
+            self._lay.addLayout(self._examples_row(rule))
 
+        # Labels above their fields: the panel is narrow, and long labels or
+        # options side by side were cut off at the right edge.
         form = QFormLayout()
+        form.setRowWrapPolicy(QFormLayout.WrapAllRows)
         form.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         form.setHorizontalSpacing(12)
-        form.setVerticalSpacing(9)
+        form.setVerticalSpacing(4)
         form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
         self.error_label = QLabel()
         self.error_label.setObjectName("ErrorText")
@@ -175,20 +183,62 @@ class RuleEditor(QWidget):
             meta = f.metadata
             widget = self._make_widget(rule, f.name, meta)
             if meta["kind"] == BOOL:
-                form.addRow("", widget)
+                form.addRow(widget)
             else:
                 label = QLabel(meta["label"])
                 label.setObjectName("Dim")
+                label.setContentsMargins(0, 6, 0, 0)
                 form.addRow(label, widget)
             if meta.get("help"):
                 helper = QLabel(meta["help"])
                 helper.setObjectName("Faint")
                 helper.setStyleSheet("font-size:8.5pt;")
-                form.addRow("", helper)
+                helper.setWordWrap(True)
+                form.addRow(helper)
         self._lay.addLayout(form)
         self._lay.addWidget(self.error_label)
         self._lay.addStretch(1)
         self._refresh_error()
+
+    def _examples_row(self, rule: Rule) -> QHBoxLayout:
+        """'Examples' menu that fills in the fields, plus the RegEx guide."""
+        row = QHBoxLayout()
+        row.setSpacing(6)
+        examples = QToolButton()
+        examples.setText("Examples")
+        examples.setIcon(icon("chevron"))
+        examples.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        examples.setLayoutDirection(Qt.RightToLeft)
+        examples.setPopupMode(QToolButton.InstantPopup)
+        examples.setToolTip("Fill in a ready-made pattern; the preview shows the result at once")
+        menu = QMenu(examples)
+        menu.setLayoutDirection(Qt.LeftToRight)  # the button is RTL only to put its arrow last
+        for title, sample, params in rule.EXAMPLES:
+            act = menu.addAction(f"{title}\t{sample}")
+            act.triggered.connect(lambda _=False, p=params: self.use_example(p))
+        examples.setMenu(menu)
+        row.addWidget(examples)
+        if rule.TYPE == "regex":
+            guide = QToolButton()
+            guide.setText("RegEx guide")
+            guide.setObjectName("Flat")
+            guide.setToolTip("How patterns work, with a cheat sheet")
+            guide.clicked.connect(self.show_regex_guide)
+            row.addWidget(guide)
+        row.addStretch(1)
+        return row
+
+    def use_example(self, params: dict) -> None:
+        if self.rule is None:
+            return
+        for name, value in params.items():
+            setattr(self.rule, name, value)
+        self.set_rule(self.rule)  # rebuild the form with the new values
+        self.changed.emit()
+
+    def show_regex_guide(self) -> None:
+        from alexed_bru.ui.regex_help import RegexGuide
+        RegexGuide(self.window()).exec()
 
     def _make_widget(self, rule: Rule, name: str, meta: dict) -> QWidget:
         kind = meta["kind"]
@@ -212,11 +262,17 @@ class RuleEditor(QWidget):
             w.valueChanged.connect(commit)
             return w
         if kind == CHOICE:
-            w = QComboBox()
+            w = WideListComboBox()
             for key, label in meta["choices"]:
                 w.addItem(label, key)
+            # Don't demand the width of the longest option; the open list
+            # still shows every option in full.
+            w.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+            w.setMinimumContentsLength(10)
             w.setCurrentIndex(max(0, w.findData(value)))
-            w.currentIndexChanged.connect(lambda _i, cb=w: commit(cb.currentData()))
+            w.setToolTip(w.currentText())
+            w.currentIndexChanged.connect(lambda _i, cb=w: (cb.setToolTip(cb.currentText()),
+                                                            commit(cb.currentData())))
             return w
 
         edit = QLineEdit(str(value))
@@ -258,6 +314,17 @@ class RuleEditor(QWidget):
                 regex_edit.style().polish(regex_edit)
             except RuntimeError:  # widget already deleted
                 self._regex_edit = None
+
+
+class WideListComboBox(QComboBox):
+    """A compact combo box whose open list is wide enough for every option."""
+
+    def showPopup(self) -> None:
+        view = self.view()
+        longest = max((self.fontMetrics().horizontalAdvance(self.itemText(i)) for i in range(self.count())),
+                      default=0)
+        view.setMinimumWidth(longest + 40)  # item padding + scroll bar
+        super().showPopup()
 
 
 def _drop_layout(layout) -> None:

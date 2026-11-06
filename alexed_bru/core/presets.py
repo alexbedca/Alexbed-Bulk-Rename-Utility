@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Alexander Bediako
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Save, load and share rule stacks as JSON."""
 from __future__ import annotations
 

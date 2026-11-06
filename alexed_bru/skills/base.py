@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Alexander Bediako
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Rule skill contract.
 
 A rule is a dataclass. Its public fields are its parameters; each field
@@ -44,6 +46,9 @@ class Rule:
     LABEL: ClassVar[str] = ""
     CATEGORY: ClassVar[str] = "General"
     DESCRIPTION: ClassVar[str] = ""
+    # Ready-made settings shown in the editor's Examples menu:
+    # (title, "before → after" sample, {param: value}).
+    EXAMPLES: ClassVar[list[tuple[str, str, dict]]] = []
 
     enabled: bool = field(default=True, metadata={"hidden": True})
 

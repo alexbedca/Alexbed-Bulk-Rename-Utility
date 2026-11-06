@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Alexander Bediako
+# SPDX-License-Identifier: GPL-3.0-or-later
 """The virtual data layer: RenameModel + painting delegates.
 
 ``RenameModel`` is a QAbstractTableModel that owns the file list. Per row it
@@ -22,7 +24,7 @@ from PySide6.QtWidgets import QStyle, QStyledItemDelegate, QStyleOptionViewItem
 
 from alexed_bru.core.models import FileItem, Proposal, Status
 from alexed_bru.skills.metadata import MetadataStore
-from alexed_bru.ui.theme import DIFF_COLOUR, GROUP_COLOURS, C
+from alexed_bru.ui.theme import ADDED_COLOUR, GROUP_COLOURS, REMOVED_COLOUR, C
 
 COL_INCLUDE, COL_STATUS, COL_ORIGINAL, COL_NEW, COL_FOLDER, COL_INFO = range(6)
 HEADERS = ["", "Status", "Original name", "New name", "Folder", "Details"]
@@ -216,9 +218,15 @@ class RenameModel(QAbstractTableModel):
             if col == COL_NEW:
                 return prop.new_name
         elif role == SPANS_ROLE:
-            if col == COL_ORIGINAL and self.highlighter and item.include:
-                return self.highlighter(original)
-            if col == COL_NEW and item.include and status in (Status.PENDING, Status.WARNING, Status.ERROR):
+            if not item.include:
+                return None
+            changing = status in (Status.PENDING, Status.WARNING, Status.ERROR)
+            if col == COL_ORIGINAL:
+                if self.highlighter:  # a RegEx rule is selected: show its matches
+                    return self.highlighter(original)
+                if changing:
+                    return removed_spans(item.name, prop.new_name)
+            if col == COL_NEW and changing:
                 return diff_spans(item.name, prop.new_name)
         elif role == STATUS_ROLE:
             return status
@@ -267,23 +275,40 @@ def natural_name(name: str):
     return (_natural(stem), _natural(ext))
 
 
-def diff_spans(old: str, new: str) -> list[tuple[int, int, int]]:
-    """Ranges in ``new`` that differ from ``old`` (for highlighting)."""
+ADDED, REMOVED = -1, -2  # span colour indexes for the diff (>= 0 are regex groups)
+
+
+def _diff(old: str, new: str, side: str) -> list[tuple[int, int, int]]:
     if old == new:
         return []
     matcher = difflib.SequenceMatcher(None, old, new, autojunk=False)
-    raw = [(j1, j2) for tag, _i1, _i2, j1, j2 in matcher.get_opcodes()
-           if tag in ("replace", "insert") and j2 > j1]
+    if side == "new":
+        raw = [(j1, j2) for tag, _i1, _i2, j1, j2 in matcher.get_opcodes()
+               if tag in ("replace", "insert") and j2 > j1]
+        text, kind = new, ADDED
+    else:
+        raw = [(i1, i2) for tag, i1, i2, _j1, _j2 in matcher.get_opcodes()
+               if tag in ("replace", "delete") and i2 > i1]
+        text, kind = old, REMOVED
     merged: list[list[int]] = []
     for start, end in raw:  # merge spans split by tiny coincidental matches
         if merged and start - merged[-1][1] <= 3:
             merged[-1][1] = end
         else:
             merged.append([start, end])
-    covered = sum(e - s for s, e in merged)
-    if covered > 0.7 * len(new):
-        return []  # essentially a brand-new name: the bold weight already says "changed"
-    return [(s, e, -1) for s, e in merged]
+    if sum(e - s for s, e in merged) > 0.7 * len(text):
+        merged = [[merged[0][0], merged[-1][1]]]  # mostly new: one clear block, not confetti
+    return [(s, e, kind) for s, e in merged]
+
+
+def diff_spans(old: str, new: str) -> list[tuple[int, int, int]]:
+    """Ranges in ``new`` that were added or changed (painted as ADDED)."""
+    return _diff(old, new, "new")
+
+
+def removed_spans(old: str, new: str) -> list[tuple[int, int, int]]:
+    """Ranges in ``old`` that will be removed or replaced (painted as REMOVED)."""
+    return _diff(old, new, "old")
 
 
 # ==========================================================================
@@ -361,16 +386,30 @@ class HighlightDelegate(QStyledItemDelegate):
             if start >= end:
                 continue
             x = self._run(painter, fm, text[pos:start], x, y_text, base_colour)
-            colour = QColor(DIFF_COLOUR if colour_idx < 0 else GROUP_COLOURS[colour_idx % len(GROUP_COLOURS)])
+            if colour_idx == ADDED:
+                colour, alpha, ink = QColor(ADDED_COLOUR), 80, QColor("#FFFFFF")
+            elif colour_idx == REMOVED:
+                colour, alpha, ink = QColor(REMOVED_COLOUR), 45, QColor(REMOVED_COLOUR).lighter(115)
+            else:
+                colour = QColor(GROUP_COLOURS[colour_idx % len(GROUP_COLOURS)])
+                alpha, ink = 55, QColor("#FFFFFF")
             seg = text[start:end]
             w = fm.horizontalAdvance(seg)
             bg = QColor(colour)
-            bg.setAlpha(55)
+            bg.setAlpha(alpha)
+            top = rect.center().y() - fm.height() // 2 - 1
             painter.setPen(Qt.NoPen)
             painter.setBrush(bg)
-            painter.drawRoundedRect(x - 1, rect.center().y() - fm.height() // 2 - 1, w + 2, fm.height() + 2, 3, 3)
-            light = colour.lighter(135) if colour_idx < 0 else QColor("#FFFFFF")
-            x = self._run(painter, fm, seg, x, y_text, light)
+            painter.drawRoundedRect(x - 1, top, w + 2, fm.height() + 2, 3, 3)
+            if colour_idx == ADDED:  # a solid underline makes additions pop at a glance
+                painter.setBrush(colour)
+                painter.drawRect(x - 1, top + fm.height(), w + 2, 2)
+            x_start = x
+            x = self._run(painter, fm, seg, x, y_text, ink)
+            if colour_idx == REMOVED:  # strike through what will be removed
+                painter.setPen(ink)
+                mid = y_text - fm.strikeOutPos()
+                painter.drawLine(x_start, mid, x, mid)
             pos = end
         self._run(painter, fm, text[pos:], x, y_text, base_colour)
         painter.restore()

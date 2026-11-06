@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Alexander Bediako
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Smart Media skill: metadata providers plus a thread-safe, cached store."""
 from __future__ import annotations
 

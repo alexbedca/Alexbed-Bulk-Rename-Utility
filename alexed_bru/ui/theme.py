@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Alexander Bediako
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Dark theme: palette, stylesheet and native Windows 11 title bar."""
 from __future__ import annotations
 
@@ -32,7 +34,9 @@ class C:
 
 # Highlight colours for regex groups: full match, then group 1, 2, ...
 GROUP_COLOURS = ["#6366F1", "#22D3EE", "#C084FC", "#34D399", "#FBBF24", "#F472B6", "#60A5FA"]
-DIFF_COLOUR = "#22D3EE"
+# Preview diff: what a rename adds (new name) and removes (original name).
+ADDED_COLOUR = "#22D3EE"
+REMOVED_COLOUR = "#FB7185"
 
 QSS = f"""
 * {{ outline: 0; }}

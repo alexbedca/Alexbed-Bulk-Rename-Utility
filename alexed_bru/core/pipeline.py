@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Alexander Bediako
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Runs a rule stack over a list of files. Pure: never touches the disk."""
 from __future__ import annotations
 

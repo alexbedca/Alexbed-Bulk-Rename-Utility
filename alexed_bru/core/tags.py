@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Alexander Bediako
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Dynamic tag expansion: ``<audio:artist> - <audio:title>``.
 
 Grammar:  ``<head>``  |  ``<head:key>``  |  ``<head:key:format>``

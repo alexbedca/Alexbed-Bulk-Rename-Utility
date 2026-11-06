@@ -1,0 +1,32 @@
+ALEXED BULK RENAME UTILITY - THIRD-PARTY NOTICES
+================================================
+
+Alexed Bulk Rename Utility is Copyright (C) 2026 Alexander Bediako and is
+released under the GNU General Public License, version 3 or later (see the
+file LICENSE).
+
+The program is built from, and ships together with, the free software listed
+below. Each component remains under its own licence. Together they form one
+program that is distributed under the GPL-3.0 terms.
+
+Component            Licence                                  Where to get the source
+-------------------  ---------------------------------------  --------------------------------------
+PySide6 / Shiboken6  LGPL v3 (used here under the LGPL v3)    https://code.qt.io/cgit/pyside/pyside-setup.git/
+Qt 6                 LGPL v3 (used here under the LGPL v3)    https://www.qt.io/download-open-source
+mutagen              GPL v2 or later                          https://github.com/quodlibet/mutagen
+pypdf                BSD 3-Clause                             https://github.com/py-pdf/pypdf
+Pillow               MIT-CMU (HPND)                           https://github.com/python-pillow/Pillow
+Python               Python Software Foundation Licence       https://www.python.org
+PyInstaller (build)  GPL v2 or later, with bootloader         https://github.com/pyinstaller/pyinstaller
+                     exception
+
+The Windows executable is a PyInstaller bundle. It contains unmodified copies
+of the Python runtime and of the libraries above. Qt and PySide6 are used as
+shared libraries under the LGPL v3: you may replace them by running the
+program from source (see README.md) with your own build of Qt / PySide6.
+
+SOURCE CODE
+-----------
+The complete source code of every release, including the build script
+(build.ps1), is available at
+https://github.com/alexbedca/Alexed-Bulk-Rename-Utility (see the release tag).

@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Alexander Bediako
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Built-in renaming rules (the "Rules" skill).
 
 Every rule is pure: (stem, ext, context) -> (stem, ext). Text parameters
@@ -80,8 +82,31 @@ class RegexRule(TargetedRule):
     TYPE = "regex"
     LABEL = "RegEx Replace"
     CATEGORY = "Text"
-    DESCRIPTION = ("Python regular expressions. Use \\1, \\g<name> or $1 for groups; "
-                   "<tags> work in the replacement.")
+    DESCRIPTION = ("Find text by pattern and replace it. Brackets ( ) capture parts you can "
+                   "reuse as \\1, \\2 in the replacement. Not sure? Pick one of the Examples.")
+    EXAMPLES = [
+        ("Remove leading track numbers", "01 - Song  →  Song",
+         {"pattern": r"^\d+\s*[-._]?\s*", "replacement": ""}),
+        ("Put 'Track' before the number", "07 Song  →  Track 07 Song",
+         {"pattern": r"^(\d+)", "replacement": r"Track \1"}),
+        ("Swap 'Artist - Title' to 'Title - Artist'", "Adele - Hello  →  Hello - Adele",
+         {"pattern": r"^(.+?) - (.+)$", "replacement": r"\2 - \1"}),
+        ("Remove text in ( ) or [ ]", "Song (Live) [HD]  →  Song",
+         {"pattern": r"\s*[(\[][^)\]]*[)\]]", "replacement": ""}),
+        ("Spaces to underscores", "My Holiday Photo  →  My_Holiday_Photo",
+         {"pattern": r"\s+", "replacement": "_"}),
+        ("Squash repeated spaces and underscores", "My__file   name  →  My file name",
+         {"pattern": r"[\s_]{2,}", "replacement": " "}),
+        ("Remove ' - Copy' and ' (2)' endings", "Report - Copy (2)  →  Report",
+         {"pattern": r"(\s*-\s*Copy)?(\s*\(\d+\))?$", "replacement": ""}),
+        ("Date DD-MM-YYYY to YYYY-MM-DD", "Invoice 31-12-2024  →  Invoice 2024-12-31",
+         {"pattern": r"(\d{2})[-.](\d{2})[-.](\d{4})", "replacement": r"\3-\2-\1"}),
+        ("Phone photo name to readable date", "IMG_20230601_142209  →  2023-06-01 14.22.09",
+         {"pattern": r"^(?:IMG|VID|PXL)_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})\d*",
+          "replacement": r"\1-\2-\3 \4.\5.\6"}),
+        ("Keep only the part after the last ' - '", "Artist - Album - Song  →  Song",
+         {"pattern": r"^.* - ", "replacement": ""}),
+    ]
 
     pattern: str = param("", "Pattern", REGEX)
     replacement: str = param("", "Replace with", TEMPLATE)

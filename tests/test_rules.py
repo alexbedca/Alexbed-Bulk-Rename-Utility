@@ -16,6 +16,12 @@ def run(name: str, *rules: Rule, folder: str = "C:/music") -> str:
     return run_pipeline(items, rules, MetadataStore())[0].new_name
 
 
+@pytest.mark.parametrize("title,sample,params", RegexRule.EXAMPLES, ids=[e[0] for e in RegexRule.EXAMPLES])
+def test_regex_examples_do_what_they_say(title, sample, params):
+    before, after = (s.strip() for s in sample.split("→"))
+    assert run(before + ".txt", RegexRule(**params)) == after + ".txt"
+
+
 def test_split_name_edge_cases():
     assert split_name("a.tar.gz") == ("a.tar", "gz")
     assert split_name(".gitignore") == (".gitignore", "")
