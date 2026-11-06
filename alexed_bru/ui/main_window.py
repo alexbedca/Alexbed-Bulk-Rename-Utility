@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, QUrl
+from PySide6.QtCore import QSize, Qt, QTimer, QUrl
 from PySide6.QtGui import QAction, QColor, QDesktopServices, QFont, QGuiApplication, QKeySequence, QPixmap
 from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QDialog, QDialogButtonBox,
                                QFileDialog, QFrame, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
@@ -29,6 +29,7 @@ from alexed_bru.skills.rules import RegexRule, ReplaceRule, compile_regex
 from alexed_bru.ui.preview_model import (COL_FOLDER, COL_INCLUDE, COL_INFO, COL_NEW, COL_ORIGINAL,
                                          COL_STATUS, FilterProxy, HighlightDelegate, RenameModel,
                                          natural_name, path_key)
+from alexed_bru.ui.icons import icon
 from alexed_bru.ui.rule_editor import RuleEditor, RuleRow, RuleStack, rules_menu
 from alexed_bru.ui.theme import C, dark_title_bar
 from alexed_bru.ui.workers import Job, JobRunner
@@ -177,13 +178,17 @@ class MainWindow(QMainWindow):
         button("Clear", "Remove all files from the list", self.clear_files, "Flat")
         lay.addStretch(1)
 
-        self.undo_btn = button("↶", "Undo rule change (Ctrl+Z)", self.undo_rules, "Flat")
-        self.redo_btn = button("↷", "Redo rule change (Ctrl+Y)", self.redo_rules, "Flat")
-        for b in (self.undo_btn, self.redo_btn):
+        self.undo_btn = button("", "Undo rule change (Ctrl+Z)", self.undo_rules, "Flat")
+        self.redo_btn = button("", "Redo rule change (Ctrl+Y)", self.redo_rules, "Flat")
+        for b, name in ((self.undo_btn, "undo"), (self.redo_btn, "redo")):
+            b.setIcon(icon(name))
+            b.setIconSize(QSize(18, 18))
             b.setFixedWidth(34)
-            b.setStyleSheet("font-size: 14pt;")
         presets_btn = QToolButton()
-        presets_btn.setText("Presets  ▾")
+        presets_btn.setText("Presets")
+        presets_btn.setIcon(icon("chevron"))
+        presets_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        presets_btn.setLayoutDirection(Qt.RightToLeft)  # chevron after the text
         presets_btn.setPopupMode(QToolButton.InstantPopup)
         self.presets_menu = QMenu(presets_btn)
         self.presets_menu.aboutToShow.connect(self._fill_presets_menu)
@@ -224,12 +229,12 @@ class MainWindow(QMainWindow):
 
         tools = QHBoxLayout()
         tools.setSpacing(4)
-        for text, tip, slot in (("↑", "Move up", lambda: self.move_rule(-1)),
-                                ("↓", "Move down", lambda: self.move_rule(1)),
-                                ("⧉", "Duplicate", self.duplicate_rule),
-                                ("✕", "Delete rule", self.delete_rule)):
+        for name, tip, slot in (("up", "Move up", lambda: self.move_rule(-1)),
+                                ("down", "Move down", lambda: self.move_rule(1)),
+                                ("duplicate", "Duplicate", self.duplicate_rule),
+                                ("close", "Delete rule", self.delete_rule)):
             b = QToolButton()
-            b.setText(text)
+            b.setIcon(icon(name))
             b.setToolTip(tip)
             b.setObjectName("Flat")
             b.clicked.connect(slot)

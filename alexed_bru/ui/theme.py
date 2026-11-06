@@ -1,7 +1,9 @@
 """Dark theme: palette, stylesheet and native Windows 11 title bar."""
 from __future__ import annotations
 
+import os
 import sys
+from pathlib import Path
 
 from PySide6.QtGui import QColor, QFont, QPalette
 from PySide6.QtWidgets import QApplication, QWidget
@@ -76,7 +78,7 @@ QLineEdit, QSpinBox, QComboBox {{
 }}
 QLineEdit:focus, QSpinBox:focus, QComboBox:focus {{ border-color: {C.ACCENT}; }}
 QLineEdit[invalid="true"] {{ border-color: {C.ERROR}; }}
-QLineEdit#Mono {{ font-family: "Cascadia Mono", Consolas, monospace; }}
+QLineEdit#Mono {{ font-family: "MONO_FONT"; }}
 QComboBox::drop-down {{ border: none; width: 22px; }}
 QComboBox QAbstractItemView {{ background: {C.SURFACE_2}; border: 1px solid {C.BORDER_HI};
     selection-background-color: {C.ACCENT}; padding: 4px; }}
@@ -150,12 +152,29 @@ def apply_theme(app: QApplication) -> None:
     pal.setColor(QPalette.Disabled, QPalette.Text, QColor(C.FAINT))
     pal.setColor(QPalette.Disabled, QPalette.ButtonText, QColor(C.FAINT))
     app.setPalette(pal)
-    font = QFont()
-    font.setFamilies(["Segoe UI Variable Text", "Segoe UI", "Inter", "Helvetica Neue", "Arial"])
+    # One family name only. Each extra fallback name makes Qt enumerate every
+    # installed font, which takes seconds on PCs with thousands of fonts.
+    font = QFont(_pick_font(UI_FONTS))
     font.setPointSizeF(10)
     app.setFont(font)
     check = resource_path("assets/ui/check.svg").as_posix()
-    app.setStyleSheet(QSS.replace("CHECK_URL", check))
+    app.setStyleSheet(QSS.replace("CHECK_URL", check).replace("MONO_FONT", _pick_font(MONO_FONTS)))
+
+
+# (family, font file) in order of preference; the last entry is the fallback.
+UI_FONTS = [("Segoe UI Variable Text", "SegUIVar.ttf"), ("Segoe UI", "segoeui.ttf")]
+MONO_FONTS = [("Cascadia Mono", "CascadiaMono.ttf"), ("Consolas", "consola.ttf")]
+
+
+def _pick_font(candidates: list[tuple[str, str]]) -> str:
+    """Choose a family by checking font files, without asking Qt's font database."""
+    if sys.platform == "win32":
+        folders = [Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts",
+                   Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "Windows" / "Fonts"]
+        for family, filename in candidates:
+            if any((f / filename).exists() for f in folders):
+                return family
+    return candidates[-1][0]
 
 
 def dark_title_bar(widget: QWidget) -> None:

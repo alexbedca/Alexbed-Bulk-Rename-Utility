@@ -16,6 +16,7 @@ if ($LASTEXITCODE -ne 0) { throw "Tests failed; not building." }
     --icon assets\branding\app.ico `
     --add-data "assets\branding\app.ico;assets\branding" `
     --add-data "assets\branding\png\logo-mark-64.png;assets\branding\png" `
+    --add-data "assets\branding\png\logo-mark-128.png;assets\branding\png" `
     --add-data "assets\ui;assets\ui" `
     --exclude-module tkinter `
     --exclude-module PySide6.QtWebEngineCore `
