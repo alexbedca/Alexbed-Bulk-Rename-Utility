@@ -17,6 +17,26 @@ from alexed_bru.skills.base import (BOOL, CHOICE, INT, REGEX, TEMPLATE, TEXT, Ru
                                     param, register_rule)
 
 # ==========================================================================
+# Plain-English summaries (shown on the rule cards)
+# ==========================================================================
+def show(text: str, limit: int = 28) -> str:
+    """Quote a value for a summary; make spaces and long values readable."""
+    if text == " ":
+        return "a space"
+    if text == "":
+        return "nothing"
+    if len(text) > limit:
+        text = text[:limit - 1] + "…"
+    return f"“{text}”"
+
+
+def scoped(rule: "Rule", sentence: str) -> str:
+    """Add where a targeted rule works when it isn't the usual name-only."""
+    where = {"ext": " (in the extension)", "full": " (in the whole name)"}.get(getattr(rule, "target", "name"), "")
+    return sentence + where
+
+
+# ==========================================================================
 # Search & replace
 # ==========================================================================
 OCCURRENCES = [("all", "All occurrences"), ("first", "First only"), ("last", "Last only")]
@@ -37,7 +57,12 @@ class ReplaceRule(TargetedRule):
     occurrence: str = param("all", "Occurrence", CHOICE, choices=OCCURRENCES)
 
     def summary(self) -> str:
-        return f"“{self.find}” → “{self.replace}”" if self.find else "Find & Replace (empty)"
+        if not self.find:
+            return "Type the text to find"
+        which = {"first": " (first one only)", "last": " (last one only)"}.get(self.occurrence, "")
+        if not self.replace:
+            return scoped(self, f"Removes {show(self.find)}{which}")
+        return scoped(self, f"Replaces {show(self.find)} with {show(self.replace)}{which}")
 
     def transform(self, text: str, ctx) -> str:
         if not self.find:
@@ -74,6 +99,14 @@ _DOLLAR_GROUP = re.compile(r"\$(?:(\d+)|\{(\w+)\})")
 def normalise_replacement(text: str) -> str:
     """Accept PowerRename/JS style $1 and ${name} as well as Python's \\1 / \\g<name>."""
     return _DOLLAR_GROUP.sub(lambda m: rf"\g<{m.group(1) or m.group(2)}>", text)
+
+
+def _present_tense(title: str) -> str:
+    """Examples-menu title -> card summary: "Remove x" -> "Removes x", "Date a to b" -> "Changes date a to b"."""
+    first, _, rest = title.partition(" ")
+    if first in ("Remove", "Put", "Swap", "Squash", "Keep"):
+        return f"{first}s {rest}"
+    return f"Changes {title[:1].lower()}{title[1:]}"
 
 
 @register_rule
@@ -114,7 +147,15 @@ class RegexRule(TargetedRule):
     count: int = param(0, "Max replacements (0 = all)", INT, minimum=0, maximum=999)
 
     def summary(self) -> str:
-        return f"/{self.pattern}/ → {self.replacement}" if self.pattern else "RegEx (empty)"
+        if not self.pattern:
+            return "Type a pattern, or pick an Example"
+        for title, _sample, params in self.EXAMPLES:
+            if params["pattern"] == self.pattern and params["replacement"] == self.replacement:
+                return scoped(self, _present_tense(title))
+        pattern = self.pattern if len(self.pattern) <= 30 else self.pattern[:29] + "…"
+        if not self.replacement:
+            return scoped(self, f"Removes text matching {pattern}")
+        return scoped(self, f"Replaces text matching {pattern} with {show(self.replacement)}")
 
     def config_error(self) -> str | None:
         if not self.pattern:
@@ -186,7 +227,14 @@ class CaseRule(TargetedRule):
     mode: str = param("title", "Case", CHOICE, choices=CASE_MODES)
 
     def summary(self) -> str:
-        return dict(CASE_MODES)[self.mode]
+        return scoped(self, {
+            "title": "Capitalises Each Word",
+            "smart_title": "Capitalises words, keeping small words and acronyms",
+            "upper": "Makes everything UPPERCASE",
+            "lower": "Makes everything lowercase",
+            "sentence": "Sentence case: only the first letter is a capital",
+            "swap": "Swaps capitals and small letters",
+        }[self.mode])
 
     def transform(self, text: str, ctx) -> str:
         if self.mode == "upper":
@@ -216,8 +264,15 @@ class InsertRule(TargetedRule):
     from_end: bool = param(False, "Count from end", BOOL)
 
     def summary(self) -> str:
-        where = "end" if self.from_end else "start"
-        return f"Insert “{self.text}” at {self.position} from {where}"
+        if not self.text:
+            return "Type the text to insert"
+        if self.position == 0:
+            where = "at the end" if self.from_end else "at the start"
+        elif self.from_end:
+            where = f"{self.position} character{'s' if self.position != 1 else ''} before the end"
+        else:
+            where = f"after character {self.position}"
+        return scoped(self, f"Inserts {show(self.text)} {where}")
 
     def transform(self, text: str, ctx) -> str:
         value = tags.expand(self.text, ctx)
@@ -240,9 +295,13 @@ class PrefixSuffixRule(TargetedRule):
                                   help="Skip when the name already starts/ends with it")
 
     def summary(self) -> str:
-        if not (self.prefix or self.suffix):
-            return "Add Prefix / Suffix (empty)"
-        return f"“{self.prefix}” + name + “{self.suffix}”"
+        if self.prefix and self.suffix:
+            return scoped(self, f"Adds {show(self.prefix)} to the start and {show(self.suffix)} to the end")
+        if self.prefix:
+            return scoped(self, f"Adds {show(self.prefix)} to the start")
+        if self.suffix:
+            return scoped(self, f"Adds {show(self.suffix)} to the end")
+        return "Type a prefix or a suffix"
 
     def transform(self, text: str, ctx) -> str:
         pre = tags.expand(self.prefix, ctx)
@@ -275,10 +334,24 @@ class RemoveRule(TargetedRule):
 
     def summary(self) -> str:
         if self.mode == "range":
-            return f"Remove {self.count} char(s) at {self.start}{' from end' if self.from_end else ''}"
+            n = f"{self.count} character{'s' if self.count != 1 else ''}"
+            if self.start == 0:
+                where = "from the end" if self.from_end else "from the start"
+            elif self.from_end:
+                where = f"ending {self.start} from the end"
+            else:
+                where = f"after character {self.start}"
+            return scoped(self, f"Removes {n} {where}")
         if self.mode == "chars":
-            return f"Remove characters “{self.characters}”"
-        return f"Remove {dict(REMOVE_MODES)[self.mode].lower()}"
+            if not self.characters:
+                return "Type the characters to remove"
+            return scoped(self, f"Removes every {' '.join(show(c) for c in dict.fromkeys(self.characters))}")
+        return scoped(self, {
+            "digits": "Removes all digits",
+            "symbols": "Removes symbols and punctuation",
+            "brackets": "Removes text inside ( ), [ ] and { }",
+            "accents": "Removes accents (é → e)",
+        }[self.mode])
 
     def transform(self, text: str, ctx) -> str:
         if self.mode == "range":
@@ -322,12 +395,21 @@ class TrimRule(TargetedRule):
     def summary(self) -> str:
         bits = []
         if self.separators_to_spaces:
-            bits.append("_ . → space")
-        if self.cut_left or self.cut_right:
-            bits.append(f"cut {self.cut_left}/{self.cut_right}")
+            bits.append("turns _ and . into spaces")
+        if self.cut_left:
+            bits.append(f"cuts {self.cut_left} from the start")
+        if self.cut_right:
+            bits.append(f"cuts {self.cut_right} from the end")
         if self.trim_chars:
-            bits.append(f"trim “{self.trim_chars}”")
-        return "Trim" + (": " + ", ".join(bits) if bits else " whitespace")
+            bits.append(f"trims {show(self.trim_chars)} from the ends")
+        if self.collapse_spaces:
+            bits.append("squashes double spaces")
+        if self.strip_whitespace:
+            bits.append("trims spaces at the ends")
+        if not bits:
+            return "Tick an option to clean names"
+        text = ", ".join(bits[:3]) + (" and more" if len(bits) > 3 else "")
+        return scoped(self, text[:1].upper() + text[1:])
 
     def transform(self, text: str, ctx) -> str:
         if self.cut_left:
@@ -361,7 +443,9 @@ class PadNumbersRule(TargetedRule):
     pad_char: str = param("0", "Pad character", TEXT)
 
     def summary(self) -> str:
-        return f"Pad {self.which} numbers to {self.width}"
+        which = {"all": "numbers", "first": "the first number", "last": "the last number"}[self.which]
+        example = "7".rjust(self.width, (self.pad_char or "0")[0])
+        return scoped(self, f"Pads {which} to {self.width} digit{'s' if self.width != 1 else ''} (7 → {example})")
 
     def transform(self, text: str, ctx) -> str:
         fill = (self.pad_char or "0")[0]
@@ -406,9 +490,18 @@ class CounterRule(TargetedRule):
     no_number: str = param("end", "Renumber: files without a number", CHOICE, choices=NO_NUMBER)
 
     def summary(self) -> str:
-        sample = str(self.start).zfill(self.padding)
-        reset = " · per folder" if self.reset_per_folder else ""
-        return f"Counter {sample}, step {self.step} ({self.placement}){reset}"
+        def num(v: int) -> str:
+            return ("-" if v < 0 else "") + str(abs(v)).zfill(self.padding)
+        seq = ", ".join(num(self.start + i * self.step) for i in range(3)) + "…"
+        text = {
+            "prefix": f"Numbers files {seq} at the start",
+            "suffix": f"Numbers files {seq} at the end",
+            "replace": f"Replaces names with {seq}",
+            "index": f"Inserts {seq} after character {self.position}",
+            "renumber_first": f"Renumbers the first number in each name: {seq}",
+            "renumber_last": f"Renumbers the last number in each name: {seq}",
+        }[self.placement]
+        return scoped(self, text + (", restarting in each folder" if self.reset_per_folder else ""))
 
     def transform(self, text: str, ctx) -> str:
         n = ctx.folder_index if self.reset_per_folder else ctx.index
@@ -451,7 +544,7 @@ class TemplateRule(Rule):
     fallback_to_original: bool = param(True, "Keep original if result is empty", BOOL)
 
     def summary(self) -> str:
-        return self.template or "Template (empty)"
+        return f"Builds names as {self.template}" if self.template else "Type a template, e.g. <artist> - <title>"
 
     def apply(self, stem: str, ext: str, ctx) -> tuple[str, str]:
         result = tags.expand(self.template, ctx).strip()
@@ -478,9 +571,16 @@ class ExtensionRule(Rule):
     value: str = param("", "New extension", TEXT, help="Without the dot")
 
     def summary(self) -> str:
-        label = dict(EXT_MODES)[self.mode]
-        return f"Extension: {label} {self.value}".strip() if self.mode in ("set", "append") \
-            else f"Extension: {label}"
+        value = self.value.lstrip(".")
+        if self.mode in ("set", "append") and not value:
+            return "Type the new extension"
+        return {
+            "lower": "Makes extensions lowercase",
+            "upper": "Makes extensions UPPERCASE",
+            "set": f"Changes the extension to .{value}",
+            "append": f"Adds .{value} after the extension",
+            "remove": "Removes the extension",
+        }[self.mode]
 
     def apply(self, stem: str, ext: str, ctx) -> tuple[str, str]:
         value = self.value.lstrip(".")

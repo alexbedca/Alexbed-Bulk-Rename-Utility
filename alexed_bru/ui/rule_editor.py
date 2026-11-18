@@ -77,10 +77,14 @@ class RuleRow(QWidget):
         text.setSpacing(0)
         title = QLabel(rule.LABEL)
         title.setStyleSheet(f"font-weight:600; color:{C.TEXT if rule.enabled else C.FAINT};")
-        summary = QLabel(error or rule.summary())
+        full = error or rule.summary()
+        summary = QLabel()
         summary.setStyleSheet(f"font-size:8.5pt; color:{C.ERROR if error else C.DIM};")
         summary.setMaximumWidth(260)
-        summary.setToolTip(error or rule.summary())
+        # One line on the card ("…" if long); the tooltip has the whole sentence.
+        summary.setText(summary.fontMetrics().elidedText(full, Qt.ElideRight, 255))
+        summary.setToolTip(full)
+        self.summary_text = full
         text.addWidget(title)
         text.addWidget(summary)
         lay.addWidget(self.check)

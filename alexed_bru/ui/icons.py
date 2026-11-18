@@ -23,6 +23,10 @@ _PATHS = {
     "duplicate": "M5.5 5.5h8v8h-8zM10.5 5.5v-3h-8v8h3",
     "close": "M4 4l8 8M12 4l-8 8",
     "chevron": "M4.5 6.5 8 10l3.5-3.5",
+    "edit": "M10.5 2.5l3 3-7.5 7.5H3v-3zM9 4l3 3",
+    # three dots: tiny rings that the 1.6 stroke fills in
+    "more": ("M1.8 8a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0zM6.8 8a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0z"
+             "M11.8 8a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0z"),
 }
 
 

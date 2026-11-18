@@ -28,10 +28,11 @@ class Status(enum.IntEnum):
 class FileItem:
     """One file in the batch. Derived name parts are cached (hot path for 10k+ files)."""
 
-    __slots__ = ("_path", "include", "name", "stem", "ext", "folder", "folder_key")
+    __slots__ = ("_path", "include", "manual", "name", "stem", "ext", "folder", "folder_key")
 
-    def __init__(self, path: Path, include: bool = True) -> None:
+    def __init__(self, path: Path, include: bool = True, manual: str | None = None) -> None:
         self.include = include
+        self.manual = manual  # a new name typed by hand: used instead of the rules
         self.path = path
 
     @property
@@ -56,6 +57,7 @@ class Proposal:
     status: Status = Status.UNCHANGED
     messages: list[str] = field(default_factory=list)
     previous: str = ""  # set after Apply: the name the file had before
+    manual: bool = False  # the name was typed by hand, not made by the rules
 
     @property
     def message(self) -> str:

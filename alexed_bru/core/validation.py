@@ -8,7 +8,7 @@ import re
 from collections import defaultdict
 from typing import Callable, Sequence
 
-from alexed_bru.core.models import FileItem, Proposal, Status
+from alexed_bru.core.models import FileItem, Proposal, Status, join_name, split_name
 
 INVALID_CHARS = '\\/:*?"<>|'
 _INVALID_RE = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
@@ -57,10 +57,53 @@ class DirectoryLister:
         return self._cache[folder]
 
 
+NUMBERED_NOTE = "Numbered to avoid a duplicate name"
+
+
+def numbered(name: str, n: int) -> str:
+    """'photo.jpg', 2 -> 'photo (2).jpg'."""
+    stem, ext = split_name(name)
+    return join_name(f"{stem} ({n})", ext)
+
+
+def _auto_number(items: Sequence[FileItem], proposals: Sequence[Proposal], changing: list[int],
+                 moving_away: set[tuple[str, str]], lister: DirectoryLister) -> None:
+    """Give clashing new names a free ' (n)' ending, in list order: the first file keeps the name.
+
+    A name is taken if another file in the batch already claimed it, or if a file
+    that stays put (not renamed in this batch) already has it on disk.
+    """
+    claimed: dict[str, set[str]] = defaultdict(set)
+
+    def taken(folder: str, name: str, own: str) -> bool:
+        key = fold(name)
+        if key in claimed[folder]:
+            return True
+        if key == own:  # its own current name (e.g. a case-only rename)
+            return False
+        listing = lister.names(folder)
+        return listing is not None and key in listing and (folder, key) not in moving_away
+
+    for i in changing:
+        item, prop = items[i], proposals[i]
+        folder, own = item.folder_key, fold(item.name)
+        if taken(folder, prop.new_name, own):
+            n = 1
+            while taken(folder, numbered(prop.new_name, n), own):
+                n += 1
+            prop.new_name = numbered(prop.new_name, n)
+            prop.messages.append(NUMBERED_NOTE)
+        claimed[folder].add(fold(prop.new_name))
+
+
 def validate(items: Sequence[FileItem], proposals: Sequence[Proposal],
              lister: DirectoryLister | None = None,
-             cancelled: Callable[[], bool] | None = None) -> None:
-    """Update proposal status/messages in place."""
+             cancelled: Callable[[], bool] | None = None,
+             auto_number: bool = False) -> None:
+    """Update proposal status/messages in place.
+
+    With ``auto_number``, clashing names get ' (1)', ' (2)'... instead of an error.
+    """
     lister = lister or DirectoryLister()
 
     changing = [i for i, p in enumerate(proposals)
@@ -69,6 +112,9 @@ def validate(items: Sequence[FileItem], proposals: Sequence[Proposal],
 
     # Names that will be vacated by this batch (so their slots are free).
     moving_away = {(items[i].folder_key, fold(items[i].name)) for i in changing}
+
+    if auto_number:
+        _auto_number(items, proposals, changing, moving_away, lister)
 
     # Duplicate targets inside the batch.
     targets: dict[tuple[str, str], list[int]] = defaultdict(list)

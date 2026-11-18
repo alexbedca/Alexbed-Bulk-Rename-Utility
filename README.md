@@ -14,6 +14,8 @@ It's a single `.exe` for Windows 10/11, with no installer and no registry footpr
 - **Undo any batch later,** even after closing the app.
 - **Rename from tags:** ID3/FLAC/MP4 audio tags, video tags, EXIF dates and PDF/Office properties.
 - **Fast with big folders:** 10,000 files preview in a fraction of a second.
+- **No RegEx needed:** show one example of the name you want and the pattern is written for you. Every rule card says in plain English what it does.
+- **Fix single files by hand:** double-click a new name to type your own.
 - **Find duplicate files** by content, not by name, and set the extra copies aside safely.
 
 ## Download
@@ -42,12 +44,35 @@ Set `ALEXED_BRU_DATA` to store them somewhere else.
 
 1. Drop files or folders onto the window (subfolders are included if that box is ticked).
 2. Add rules on the left. They run top to bottom. Drag to reorder, untick to bypass.
+   Each rule card says what it does in plain English, for example *Replaces "_" with a space* or *Adds "2026 - " to the start*.
 3. The preview updates as you type:
    - *New name*: added or changed characters are highlighted in **cyan**.
    - *Original name*: characters that will be removed are **struck through in red**.
    - While a RegEx or Find & Replace rule is selected, *Original name* shows what it matches instead, with each capture group in its own colour.
    - Status dots: blue = will rename, amber = warning, red = error (skipped).
 4. Click **Rename N files**. You can undo any batch later from **History**, even after restarting the app.
+
+### Edit one file's name by hand
+
+Double-click a *New name* (or select it and press F2), type the name you want and press Enter.
+That file then ignores the rules: its name shows in *italics* with a ✎ pencil, and *Details* says "Edited by hand".
+Counters still count it, so other files keep their numbers. Hand-typed names get the same checks as any other
+(no invalid characters, no duplicates), and renaming and undo work as usual.
+To let the rules decide again, right-click → **Reset to rule name**, or clear the text.
+
+### Duplicate names
+
+If two files would end up with the same name, both show a red error and are skipped. Tick
+**Auto-number duplicate names** (above the preview) to number them instead: the first keeps the name and the
+others become `photo (1).jpg`, `photo (2).jpg` and so on, skipping numbers already used in the folder.
+Numbered rows show in amber. This setting is remembered.
+
+### Send To menu (optional)
+
+In the **⋯** menu (top right), tick **Add to Windows "Send To" menu**. Then you can right-click files in Explorer →
+**Send to → Alexed Bulk Rename** to open them in the app. This adds one shortcut to your own
+`%APPDATA%\Microsoft\Windows\SendTo` folder, needs no admin rights, and unticking removes it.
+If you move the exe, tick it again. If the app is already open, Send To opens a second window.
 
 ## Duplicate files
 
@@ -142,6 +167,10 @@ engine = RenameEngine([RegexRule(pattern=r"^(\d+)\s*", replacement=r"Track \1 - 
 for row in engine.preview(paths):
     print(row.original, "→", row.proposed, row.status.label, row.message)
 engine.apply(paths)   # two-phase, rolls back on any failure
+
+# Hand-typed names for single files, and numbering instead of duplicate errors:
+engine = RenameEngine([TemplateRule(template="<artist> - <title>")], auto_number=True)
+engine.apply(paths, overrides={r"C:\Music\01.mp3": "Intro.mp3"})
 ```
 
 ## Project docs
@@ -150,7 +179,7 @@ engine.apply(paths)   # two-phase, rolls back on any failure
 - [docs/RESEARCH.md](docs/RESEARCH.md): competitive analysis, the UX flaws we fix, feature checklist
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): stack, layout, data flow, safety model, how to add skills
 
-Tests: `.venv\Scripts\python -m pytest` (about 10s). The real 10,000-file rename/undo runs are marked slow: `.venv\Scripts\python -m pytest -m slow` (a few minutes; on this PC rename and undo each took about 4s, the rest is creating the files).
+Tests: `.venv\Scripts\python -m pytest` (about 14s; slow tests are skipped by default). The real 10,000-file rename/undo runs are marked slow: `.venv\Scripts\python -m pytest -m slow` (a few minutes; on this PC rename and undo each took about 4s, the rest is creating the files).
 
 ## Licence
 

@@ -8,9 +8,9 @@ Reads audio (mutagen), video (MP4/MOV atoms), EXIF (Pillow) and PDF/Office metad
 
 - **Status:** v1.0.0 released 2026-11-06. Public repo https://github.com/alexbedca/Alexed-Bulk-Rename-Utility
   (GPL-3.0-or-later). Release assets: `AlexedBulkRename.exe` + `AlexedBulkRename.exe.sha256`.
-  Later commits on `main` (speed-ups, renumbering fixes, RegEx examples/guide, Find duplicates, RegEx from example) are **not in a release yet**.
-- **Planned next (not built):** single-file name edits in the
-  preview, plainer rule summaries, optional Windows Send To shortcut.
+  Later commits on `main` (speed-ups, renumbering fixes, RegEx examples/guide, Find duplicates, RegEx from example,
+  plain-English rule summaries, hand-edited names, auto-number duplicates, Send To shortcut) are **not in a release
+  yet**; planned as v1.1.0.
 - **No CI** (no `.github/` folder): tests only run locally.
 - **Known limits:** MKV/AVI/WebM tags not read; folders themselves are not renamed.
 - **Read first:** `README.md` (user view), `docs/ARCHITECTURE.md` (layout, data flow, safety model, how to add rules),
@@ -21,9 +21,12 @@ Python 3.11+ (venv in `.venv`), PySide6-Essentials (Qt 6), mutagen, pypdf, Pillo
 ```
 alexed_bru/__init__.py    APP_NAME / APP_VERSION (single place for the version)
 alexed_bru/paths.py       portable data dir: AlexedBRU_data\ next to the exe (override: ALEXED_BRU_DATA)
-alexed_bru/core/          engine, pipeline (pure), validation, transaction (two-phase + rollback), history, presets, tags
-alexed_bru/skills/        rule base + registry (rules.py), metadata providers (system/audio/video/document/image)
-alexed_bru/ui/            main_window, preview_model (virtualised table + highlight delegate), rule_editor, workers, theme
+alexed_bru/core/          engine, pipeline (pure), validation (+ auto-number), transaction (two-phase + rollback),
+                          history, presets, tags, duplicates (content finder), sendto (Explorer shortcut)
+alexed_bru/skills/        rule base + registry (rules.py, plain-English summary() per rule), regex_infer
+                          (RegEx from example), metadata providers (system/audio/video/document/image)
+alexed_bru/ui/            main_window, preview_model (virtualised table + highlight delegate; New name editable),
+                          rule_editor (+ From example panel), duplicates_dialog, regex_help, workers, theme
 tests/                    pytest: engine, rules, metadata, media, ui, large (10k files, marked slow)
 assets/branding, assets/ui  logo/icon, UI icons
 test_library/             sample messy files for manual testing (git-ignored)
@@ -34,7 +37,8 @@ build.ps1                 venv + tests + PyInstaller -> dist\AlexedBulkRename.ex
 **Project commands** (PowerShell, from the project folder)
 - Setup: `python -m venv .venv` then `.venv\Scripts\pip install -r requirements-dev.txt`
 - Run: `.venv\Scripts\python run.py` (or `python -m alexed_bru`)
-- Tests: `.venv\Scripts\python -m pytest` (~10 s; `-m "not slow"` is the default via `pytest.ini`).
+- Tests: `.venv\Scripts\python -m pytest` (~14 s; `-m "not slow"` is the default via `pytest.ini`). Keep it under
+  15 s: most time is ~40 UI tests at ~0.4 s each for the window fixture; mark anything long `slow`.
   Slow 10,000-file rename/undo runs: `.venv\Scripts\python -m pytest -m slow` (a few minutes; ~4 s each for rename and undo).
 - Build: `powershell -ExecutionPolicy Bypass -File build.ps1` → `dist\AlexedBulkRename.exe` (runs tests first, stops if they fail).
 - Lint: `pyflakes` is in requirements-dev.
@@ -52,6 +56,11 @@ build.ps1                 venv + tests + PyInstaller -> dist\AlexedBulkRename.ex
 - **Safety model is the core promise:** the pipeline never touches disk; Apply = two-phase rename via
   `.~abru-<uuid>.tmp` names, full rollback on failure; history journal enables undo. Don't add shortcuts that write
   outside `core/transaction.py`.
+- Hand-typed names (`FileItem.manual`) and auto-numbering only change *proposed names* before validation, so
+  rename/undo need nothing special. Duplicate finder's "Move to _Duplicates" also goes through `transaction.execute`.
+  Its Recycle Bin path is the one place files leave; it's refused on non-fixed drives (they'd be deleted permanently).
+- Shell edits: in Git Bash heredocs, `\\n` inside Python strings turned into real line breaks twice. Write patch
+  scripts to a file with the Write tool instead.
 - New rules: subclass `Rule`, declare params with `param(...)`, decorate `@register_rule`; the UI form and preset
   serialisation are automatic. New metadata: subclass `MetadataProvider` (namespace + extensions).
 - Tag values are sanitised (`AC/DC` → `AC-DC`), never a path separator.

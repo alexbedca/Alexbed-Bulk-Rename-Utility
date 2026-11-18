@@ -111,6 +111,7 @@ class MainWindow(QMainWindow):
         self._build_shortcuts()
         self.model.itemsChanged.connect(self._on_items_changed)
         self.model.includeChanged.connect(self.schedule_preview)
+        self.model.manualChanged.connect(self.schedule_preview)
         self.setAcceptDrops(True)
         self._restore_session()
 
@@ -208,6 +209,26 @@ class MainWindow(QMainWindow):
         button("Duplicates", "Find files in the list with identical content and set the extra "
                "copies aside", self.find_duplicates)
         button("History", "Applied renames: undo or redo past batches (Ctrl+H)", self.show_history)
+        more = QToolButton()
+        more.setIcon(icon("more"))
+        more.setIconSize(QSize(18, 18))
+        more.setToolTip("More options")
+        more.setPopupMode(QToolButton.InstantPopup)
+        # the theme's wide padding would squeeze the icon in a narrow button
+        more.setStyleSheet("QToolButton { padding: 4px 6px; } QToolButton::menu-indicator { image: none; width: 0; }")
+        more.setFixedWidth(38)
+        self.more_menu = QMenu(more)
+        self.sendto_action = self.more_menu.addAction("Add to Windows “Send To” menu")
+        self.sendto_action.setCheckable(True)
+        self.sendto_action.setToolTip("Right-click files in Explorer → Send to → Alexed Bulk Rename.\n"
+                                      "Adds one shortcut to your own Send To folder; no admin rights.")
+        self.sendto_action.triggered.connect(self.toggle_sendto)
+        self.more_menu.addAction("Open data folder", lambda: QDesktopServices.openUrl(
+            QUrl.fromLocalFile(str(data_dir()))))
+        self.more_menu.setToolTipsVisible(True)
+        self.more_menu.aboutToShow.connect(self._sync_more_menu)
+        more.setMenu(self.more_menu)
+        lay.addWidget(more)
         lay.addSpacing(8)
         self.apply_btn = button("Rename files", "Apply the pending renames (Ctrl+Enter)", self.apply, "Primary")
         self.apply_btn.setEnabled(False)
@@ -300,6 +321,13 @@ class MainWindow(QMainWindow):
         self.filter_mode.currentIndexChanged.connect(self._apply_filter)
         bar.addWidget(self.search)
         bar.addWidget(self.filter_mode)
+        bar.addSpacing(10)
+        self.auto_number = QCheckBox("Auto-number duplicate names")
+        self.auto_number.setToolTip("When two files would get the same name, number them instead of "
+                                    "skipping them:\nphoto.jpg, photo (1).jpg, photo (2).jpg")
+        self.auto_number.setChecked(bool(self.settings.get("auto_number", False)))
+        self.auto_number.toggled.connect(self.schedule_preview)
+        bar.addWidget(self.auto_number)
         bar.addStretch(1)
         # Key for the preview highlighting, shown while there is something to rename.
         self.legend = QLabel(
@@ -644,7 +672,8 @@ class MainWindow(QMainWindow):
             self._update_counts()
             return
         items = self.model.snapshot()
-        engine = RenameEngine([r.clone() for r in self.rules], self.store)
+        engine = RenameEngine([r.clone() for r in self.rules], self.store,
+                              auto_number=self.auto_number.isChecked())
         job = Job(self._gen, lambda progress, cancelled: engine.compute(items, progress, cancelled))
         job.signals.result.connect(self._on_preview)
         job.signals.progress.connect(self._on_preview_progress)
@@ -715,7 +744,7 @@ class MainWindow(QMainWindow):
         text += "\n\nYou can undo this later from History."
         if QMessageBox.question(self, APP_NAME, text) != QMessageBox.Yes:
             return
-        label = " → ".join(r.summary() for r in self.rules if r.enabled)[:120] or "Rename"
+        label = "; ".join(r.summary() for r in self.rules if r.enabled)[:160] or "Rename"
         dlg = QProgressDialog("Renaming files…", None, 0, len(ops), self)
         dlg.setWindowModality(Qt.WindowModal)
         dlg.setMinimumDuration(400)
@@ -741,6 +770,24 @@ class MainWindow(QMainWindow):
         self.model.relocate(mapping, mark_success=True)
         self._update_counts()
         self.status_text.setText(f"Renamed {len(result.ops):,} file(s). Undo any time from History.")
+
+    def _sync_more_menu(self) -> None:
+        from alexed_bru.core import sendto
+        self.sendto_action.setChecked(sendto.is_installed())
+
+    def toggle_sendto(self, on: bool) -> None:
+        from alexed_bru.core import sendto
+        try:
+            if on:
+                sendto.install()
+                self.status_text.setText("Added to Send To: right-click files in Explorer → Send to → "
+                                         "Alexed Bulk Rename. If you move the app, tick it again.")
+            else:
+                sendto.remove()
+                self.status_text.setText("Removed from the Send To menu.")
+        except OSError as exc:
+            QMessageBox.warning(self, APP_NAME, f"Could not change the Send To menu.\n\n{exc}")
+        self.sendto_action.setChecked(sendto.is_installed())
 
     def show_history(self) -> None:
         HistoryDialog(self).exec()
@@ -813,6 +860,14 @@ class MainWindow(QMainWindow):
         menu.addAction("Include", lambda: self.model.set_include(rows, True))
         menu.addAction("Exclude", lambda: self.model.set_include(rows, False))
         menu.addAction("Remove from list", self.remove_selected_files)
+        menu.addSeparator()
+        if len(rows) == 1 and self.model.items[rows[0]].include:
+            menu.addAction("Edit new name…\tF2", lambda: self.table.edit(
+                self.proxy.mapFromSource(self.model.index(rows[0], COL_NEW))))
+        edited = self.model.manual_rows(rows)
+        if edited:
+            menu.addAction(f"Reset to rule name ({len(edited)})" if len(edited) > 1 else "Reset to rule name",
+                           lambda: self.model.reset_manual(edited))
         menu.addSeparator()
         menu.addAction("Copy new names", lambda: QGuiApplication.clipboard().setText(
             "\n".join(self.model.proposals[r].new_name for r in rows)))
@@ -896,6 +951,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event) -> None:
         self.runner.cancel_all()
         self.settings.update(recursive=self.recursive.isChecked(),
+                             auto_number=self.auto_number.isChecked(),
                              geometry=bytes(self.saveGeometry()).hex(),
                              session=presets.dump(self.rules, "session"))
         try:

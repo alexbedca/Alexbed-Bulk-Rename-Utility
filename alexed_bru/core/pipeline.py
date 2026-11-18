@@ -59,6 +59,14 @@ def run_pipeline(items: Sequence[FileItem], rules: Sequence[Rule], store: Metada
         if not item.include:
             proposals.append(Proposal(item.name, Status.UNCHANGED, ["Excluded"]))
             continue
+        if item.manual:
+            # Typed by hand: used as is. It still takes its place in the
+            # counting, so other files' numbers don't shift.
+            status = Status.UNCHANGED if item.manual == item.name else Status.PENDING
+            proposals.append(Proposal(item.manual, status, [], manual=True))
+            index += 1
+            per_folder[item.folder_key] += 1
+            continue
         ctx = RuleContext(item, index, per_folder[item.folder_key], total, store)
         stem, ext = item.stem, item.ext
         try:

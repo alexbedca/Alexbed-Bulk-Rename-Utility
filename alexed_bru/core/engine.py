@@ -12,9 +12,10 @@
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterable, Sequence
+from typing import Callable, Iterable, Mapping, Sequence
 
 import alexed_bru.skills  # noqa: F401  (registers built-in rules & providers)
 from alexed_bru.core.history import History
@@ -41,10 +42,12 @@ class PreviewRow:
 
 class RenameEngine:
     def __init__(self, rules: Sequence[Rule] = (), store: MetadataStore | None = None,
-                 history: History | None = None) -> None:
+                 history: History | None = None, auto_number: bool = False) -> None:
         self.rules: list[Rule] = list(rules)
         self.store = store or MetadataStore()
         self.history = history
+        # Clashing new names get " (1)", " (2)"... instead of being skipped as errors.
+        self.auto_number = auto_number
 
     # ---- computation (pure: never touches names on disk) -------------------
     def compute(self, items: Sequence[FileItem],
@@ -57,11 +60,19 @@ class RenameEngine:
         proposals = run_pipeline(items, self.rules, self.store, cancelled)
         if proposals is None:
             return None
-        validate(items, proposals, DirectoryLister(), cancelled)
+        validate(items, proposals, DirectoryLister(), cancelled, self.auto_number)
         return proposals
 
-    def preview(self, paths: Iterable[Path | str]) -> list[PreviewRow]:
-        items = [FileItem(Path(p)) for p in paths]
+    @staticmethod
+    def items_for(paths: Iterable[Path | str],
+                  overrides: Mapping[Path | str, str] | None = None) -> list[FileItem]:
+        """FileItems for paths; `overrides` maps a path to a hand-typed new name."""
+        by_key = {_key(p): name for p, name in (overrides or {}).items()}
+        return [FileItem(Path(p), manual=by_key.get(_key(p)) or None) for p in paths]
+
+    def preview(self, paths: Iterable[Path | str],
+                overrides: Mapping[Path | str, str] | None = None) -> list[PreviewRow]:
+        items = self.items_for(paths, overrides)
         proposals = self.compute(items) or []
         return [PreviewRow(i.path, i.name, p.new_name, p.status, p.message)
                 for i, p in zip(items, proposals)]
@@ -81,7 +92,12 @@ class RenameEngine:
                 self.history.record(result.ops, label or f"Renamed {len(result.ops)} file(s)")
         return result
 
-    def apply(self, paths: Iterable[Path | str]) -> TransactionResult:
-        items = [FileItem(Path(p)) for p in paths]
+    def apply(self, paths: Iterable[Path | str],
+              overrides: Mapping[Path | str, str] | None = None) -> TransactionResult:
+        items = self.items_for(paths, overrides)
         proposals = self.compute(items) or []
         return self.apply_plan(self.plan(items, proposals))
+
+
+def _key(path: Path | str) -> str:
+    return os.path.normcase(os.path.abspath(str(path)))

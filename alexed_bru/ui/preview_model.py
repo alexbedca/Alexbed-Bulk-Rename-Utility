@@ -58,6 +58,7 @@ def path_key(path: Path) -> str:
 class RenameModel(QAbstractTableModel):
     includeChanged = Signal()
     itemsChanged = Signal()
+    manualChanged = Signal()  # a name was typed by hand or reset
 
     def __init__(self, store: MetadataStore, parent=None) -> None:
         super().__init__(parent)
@@ -69,6 +70,8 @@ class RenameModel(QAbstractTableModel):
         self._icons: dict[Status, QIcon] = {}
         self._bold = QFont()
         self._bold.setWeight(QFont.DemiBold)
+        self._manual_font = QFont(self._bold)
+        self._manual_font.setItalic(True)
 
     # ---- data management ----------------------------------------------------
     def add_paths(self, paths: Iterable[Path]) -> int:
@@ -130,6 +133,7 @@ class RenameModel(QAbstractTableModel):
                 continue
             old_name = item.name
             item.path = new_path
+            item.manual = None  # the file now has its new name; the typed one is used up
             if mark_success:
                 self.proposals[n] = Proposal(new_path.name, Status.SUCCESS, ["Renamed"], previous=old_name)
         self._keys = {path_key(i.path) for i in self.items}
@@ -137,7 +141,20 @@ class RenameModel(QAbstractTableModel):
 
     def snapshot(self) -> list[FileItem]:
         """Thread-safe copy for background jobs."""
-        return [FileItem(i.path, i.include) for i in self.items]
+        return [FileItem(i.path, i.include, i.manual) for i in self.items]
+
+    def reset_manual(self, rows: Iterable[int]) -> None:
+        """Forget hand-typed names; the rules decide again."""
+        changed = False
+        for r in rows:
+            if self.items[r].manual:
+                self.items[r].manual = None
+                changed = True
+        if changed:
+            self.manualChanged.emit()
+
+    def manual_rows(self, rows: Iterable[int]) -> list[int]:
+        return [r for r in rows if self.items[r].manual]
 
     def metadata(self, row: int) -> dict[str, dict]:
         """The file metadata dictionary for a row, grouped by namespace."""
@@ -170,6 +187,8 @@ class RenameModel(QAbstractTableModel):
         base = Qt.ItemIsEnabled | Qt.ItemIsSelectable
         if index.column() == COL_INCLUDE:
             base |= Qt.ItemIsUserCheckable
+        elif index.column() == COL_NEW and self.items[index.row()].include:
+            base |= Qt.ItemIsEditable  # double-click (or F2) to type a name by hand
         return base
 
     def data(self, index, role=Qt.DisplayRole):
@@ -190,9 +209,18 @@ class RenameModel(QAbstractTableModel):
             if col == COL_FOLDER:
                 return str(item.folder)
             if col == COL_INFO:
-                return prop.message if item.include else "Excluded"
+                if not item.include:
+                    return "Excluded"
+                if item.manual and prop.status != Status.SUCCESS:
+                    return "; ".join(["Edited by hand"] + prop.messages)
+                return prop.message
+        elif role == Qt.EditRole and col == COL_NEW:
+            return prop.new_name
         elif role == Qt.CheckStateRole and col == COL_INCLUDE:
             return Qt.Checked if item.include else Qt.Unchecked
+        elif role == Qt.DecorationRole and col == COL_NEW and item.include and item.manual:
+            from alexed_bru.ui.icons import icon
+            return icon("edit")
         elif role == Qt.DecorationRole and col == COL_STATUS:
             if status not in self._icons:
                 self._icons[status] = _dot(STATUS_COLOURS[status])
@@ -208,6 +236,8 @@ class RenameModel(QAbstractTableModel):
                 return QBrush(QColor(STATUS_COLOURS[status] if status != Status.PENDING else C.DIM))
             if col == COL_FOLDER:
                 return QBrush(QColor(C.FAINT))
+        elif role == Qt.FontRole and col == COL_NEW and item.include and item.manual:
+            return self._manual_font
         elif role == Qt.FontRole and col == COL_NEW and status in (Status.PENDING, Status.WARNING):
             return self._bold
         elif role == Qt.ToolTipRole:
@@ -216,7 +246,10 @@ class RenameModel(QAbstractTableModel):
             if col in (COL_ORIGINAL, COL_FOLDER):
                 return str(item.path)
             if col == COL_NEW:
-                return prop.new_name
+                if item.manual:
+                    return (f"{prop.new_name}\n\nTyped by hand. Right-click → Reset to rule name, "
+                            "or clear the text, to let the rules decide again.")
+                return f"{prop.new_name}\n\nDouble-click to type a different name for this file."
         elif role == SPANS_ROLE:
             if not item.include:
                 return None
@@ -233,6 +266,19 @@ class RenameModel(QAbstractTableModel):
         return None
 
     def setData(self, index, value, role=Qt.EditRole) -> bool:
+        if index.column() == COL_NEW and role == Qt.EditRole:
+            row = index.row()
+            item, prop = self.items[row], self.proposals[row]
+            text = str(value or "").strip()
+            if text == (prop.new_name if not item.manual else item.manual):
+                return False  # nothing changed
+            # Empty text resets; otherwise the typed name wins over the rules.
+            item.manual = text or None
+            if text:
+                self.proposals[row] = Proposal(text, Status.PENDING, [], manual=True)
+            self.dataChanged.emit(self.index(row, 0), self.index(row, len(HEADERS) - 1))
+            self.manualChanged.emit()
+            return True
         if index.column() == COL_INCLUDE and role == Qt.CheckStateRole:
             self.items[index.row()].include = Qt.CheckState(value) == Qt.Checked
             self.dataChanged.emit(self.index(index.row(), 0), self.index(index.row(), len(HEADERS) - 1))
