@@ -6,11 +6,15 @@ stack rules (Find & Replace, RegEx, prefix/suffix, case, counters/renumbering, t
 preview, then rename as one transaction that rolls back on any failure. Any batch can be undone later from History.
 Reads audio (mutagen), video (MP4/MOV atoms), EXIF (Pillow) and PDF/Office metadata for tag-based names.
 
-- **Status:** v1.0.0 released 2026-11-06. Public repo https://github.com/alexbedca/Alexed-Bulk-Rename-Utility
-  (GPL-3.0-or-later). Release assets: `AlexedBulkRename.exe` + `AlexedBulkRename.exe.sha256`.
-  Later commits on `main` (speed-ups, renumbering fixes, RegEx examples/guide, Find duplicates, RegEx from example,
-  plain-English rule summaries, hand-edited names, auto-number duplicates, Send To shortcut) are **not in a release
-  yet**; planned as v1.1.0.
+- **Status:** v1.1.0 released 2026-11-18 (v1.0.0 on 2026-11-06). Public repo
+  https://github.com/alexbedca/Alexed-Bulk-Rename-Utility (GPL-3.0-or-later). Release assets: `AlexedBulkRename.exe`,
+  `AlexedBulkRename.exe.sha256`, `LICENSE`, `THIRD-PARTY-NOTICES.txt`.
+  1.1.0 added: Find duplicates, RegEx from example, plain-English rule cards, hand-edited names, auto-number
+  duplicate names, Send To shortcut.
+- **Screenshots and social card:** regenerate every release. README screenshots come from the real window over
+  `test_library` (script pattern: drive `MainWindow` with `ALEXED_BRU_DATA=test_library\.appdata`, `widget.grab()`).
+  Card: `.venv\Scripts\python tools\make_social_preview.py` → `docs/social-preview.png` (shows the version), then
+  upload it in repo Settings → Social preview via Claude in Chrome.
 - **No CI** (no `.github/` folder): tests only run locally.
 - **Known limits:** MKV/AVI/WebM tags not read; folders themselves are not renamed.
 - **Read first:** `README.md` (user view), `docs/ARCHITECTURE.md` (layout, data flow, safety model, how to add rules),
@@ -49,8 +53,8 @@ build.ps1                 venv + tests + PyInstaller -> dist\AlexedBulkRename.ex
 **Account tools this project uses** (full list in `~/.claude/CLAUDE.md`)
 - `git push` via Git Credential Manager; `gh release create/upload` for releases (repo `alexbedca/Alexed-Bulk-Rename-Utility`).
 - Personal skill `alexbed-github-publish` for README/licence/screenshot/social-preview conventions.
-- Claude in Chrome for the GitHub social-preview upload (web-only). Card working files are in
-  `..\Fast copier\social-cards\` (git-ignored there).
+- Claude in Chrome for the GitHub social-preview upload (web-only). The card is `docs/social-preview.png`,
+  made by `tools/make_social_preview.py`.
 
 ## Decisions and gotchas
 - **Safety model is the core promise:** the pipeline never touches disk; Apply = two-phase rename via

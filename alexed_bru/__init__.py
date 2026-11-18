@@ -4,4 +4,4 @@
 
 APP_NAME = "Alexed Bulk Rename Utility"
 APP_SHORT = "Alexed BRU"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"

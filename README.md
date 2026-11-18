@@ -5,7 +5,7 @@
 A portable, transactional bulk file renamer for big music libraries, photo and video folders and deeply nested document archives.
 It's a single `.exe` for Windows 10/11, with no installer and no registry footprint.
 
-**Version:** 1.0.0 &nbsp;|&nbsp; **Author:** Alexander Bediako &nbsp;|&nbsp; **Licence:** [GPL-3.0-or-later](LICENSE)
+**Version:** 1.1.0 &nbsp;|&nbsp; **Author:** Alexander Bediako &nbsp;|&nbsp; **Licence:** [GPL-3.0-or-later](LICENSE)
 
 ![Main window: rules on the left, live preview on the right](docs/screenshots/main-window.png)
 
@@ -67,6 +67,8 @@ If two files would end up with the same name, both show a red error and are skip
 others become `photo (1).jpg`, `photo (2).jpg` and so on, skipping numbers already used in the folder.
 Numbered rows show in amber. This setting is remembered.
 
+![Auto-numbered duplicate names and a name typed by hand (pencil, italics)](docs/screenshots/auto-number-and-edit.png)
+
 ### Send To menu (optional)
 
 In the **⋯** menu (top right), tick **Add to Windows "Send To" menu**. Then you can right-click files in Explorer →
@@ -85,6 +87,8 @@ Click **Duplicates** to find files in the list that have exactly the same conten
 
 Nothing is ever deleted permanently.
 
+![Find duplicates: identical files grouped, the original kept, copies ticked](docs/screenshots/duplicates.png)
+
 ## Regular expressions (RegEx)
 
 New to RegEx? Open a **RegEx Replace** rule:
@@ -92,6 +96,8 @@ New to RegEx? Open a **RegEx Replace** rule:
 - **Examples** fills in a ready-made pattern, such as removing track numbers, swapping "Artist - Title", or turning `IMG_20230601_142209` into a date. You see the result in the preview straight away.
 - **RegEx guide** opens a cheat sheet. The same guide is in [docs/REGEX_GUIDE.md](docs/REGEX_GUIDE.md).
 - **From example** writes the pattern for you: pick a file and type how its name should look (for example `Adele - Hello` → `Hello - Adele`). It shows the pattern and how many files it matches before you use it. Files with a different shape are left unchanged. See [Generate a pattern from an example](docs/REGEX_GUIDE.md#generate-a-pattern-from-an-example).
+
+![Generate a pattern from one example](docs/screenshots/regex-from-example.png)
 
 ![RegEx capture groups highlighted in the preview](docs/screenshots/regex-groups.png)
 
