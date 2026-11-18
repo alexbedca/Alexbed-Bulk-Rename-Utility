@@ -27,16 +27,23 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 `build.ps1` re-runs the tests and writes `dist\AlexedBulkRename.exe`. Then make the checksum file:
 ```powershell
 $h = (Get-FileHash dist\AlexedBulkRename.exe -Algorithm SHA256).Hash.ToLower()
-"$h  AlexedBulkRename.exe" | Set-Content -Encoding ascii dist\AlexedBulkRename.exe.sha256
+[IO.File]::WriteAllText("$PWD\dist\AlexedBulkRename.exe.sha256", "$h  AlexedBulkRename.exe`n")
 ```
+Use a plain `\n` line ending: `Set-Content` writes CRLF, and then `sha256sum -c` fails (1.1.0 had to re-upload it).
 Portable smoke test: copy the exe to `%TEMP%\bru-portable`, start it, rename a few files from `test_library\`
 copies, undo from History, and check that `AlexedBRU_data\` was created next to the exe (not in AppData).
 Report the startup time honestly (it was 4–6 s after commit c9f7cc5).
 
-## 3. Screenshots (only if the UI changed)
-Screenshots live in `docs/screenshots/` (`main-window.png`, `regex-groups.png`, `regex-examples.png`,
-`regex-guide.png`, `smart-tags.png`). There is no snapshot hook in this app; capture with computer use
-(ask first) and crop to the window.
+## 3. Screenshots and social card (every release)
+Screenshots live in `docs/screenshots/` (`main-window`, `regex-groups`, `regex-examples`, `regex-guide`,
+`regex-from-example`, `smart-tags`, `auto-number-and-edit`, `duplicates` .png). For 1.1.0 they were made by a
+script that drives the real `MainWindow` on screen over `test_library` (`ALEXED_BRU_DATA=test_library\.appdata`)
+and saves `widget.grab()` at 1400×800; the duplicates/numbering demos are folders it creates inside
+`test_library`. Look at every image before committing. Then rebuild the card (it shows the version):
+`.venv\Scripts\python tools\make_social_preview.py` → `docs/social-preview.png`, and upload it in repo
+Settings → Social preview with Claude in Chrome (`find` the hidden "Upload an image..." file input, then
+`file_upload`); verify with GraphQL `usesCustomOpenGraphImage`.
+Testing the built exe by clicking needs computer use, which Alexander may decline; then report it as NOT TESTED.
 
 ## 4. Commit, tag, release
 ```powershell
