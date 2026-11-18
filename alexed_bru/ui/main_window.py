@@ -37,6 +37,7 @@ from alexed_bru.ui.theme import ADDED_COLOUR, REMOVED_COLOUR, C, dark_title_bar
 from alexed_bru.ui.workers import Job, JobRunner
 
 SKIP_PREFIX = ".~abru-"  # our own temp files, never list them
+DUPLICATES_FOLDER = "_Duplicates"  # same as core.duplicates (not imported: keeps startup lean)
 
 
 def scan(paths: list[Path], recursive: bool, cancelled) -> list[Path]:
@@ -50,7 +51,8 @@ def scan(paths: list[Path], recursive: bool, cancelled) -> list[Path]:
                 for root, dirs, files in os.walk(p):
                     if cancelled():
                         return out
-                    dirs.sort(key=_natural)
+                    # copies set aside by Find duplicates stay out of later scans
+                    dirs[:] = sorted((d for d in dirs if d != DUPLICATES_FOLDER), key=_natural)
                     out.extend(Path(root) / f for f in sorted(files, key=natural_name))
             else:
                 out.extend(sorted((c for c in p.iterdir() if c.is_file()), key=lambda c: natural_name(c.name)))
@@ -203,6 +205,8 @@ class MainWindow(QMainWindow):
         self.presets_menu.aboutToShow.connect(self._fill_presets_menu)
         presets_btn.setMenu(self.presets_menu)
         lay.addWidget(presets_btn)
+        button("Duplicates", "Find files in the list with identical content and set the extra "
+               "copies aside", self.find_duplicates)
         button("History", "Applied renames: undo or redo past batches (Ctrl+H)", self.show_history)
         lay.addSpacing(8)
         self.apply_btn = button("Rename files", "Apply the pending renames (Ctrl+Enter)", self.apply, "Primary")
@@ -428,6 +432,19 @@ class MainWindow(QMainWindow):
 
     def remove_selected_files(self) -> None:
         self.model.remove_rows(self._selected_rows())
+
+    def forget_files(self, paths: list[Path]) -> None:
+        """Drop files from the list (they were moved away or recycled)."""
+        gone = {path_key(p) for p in paths}
+        self.model.remove_rows(n for n, item in enumerate(self.model.items) if path_key(item.path) in gone)
+        self.store.invalidate(paths)
+
+    def find_duplicates(self) -> None:
+        if not self.model.items:
+            QMessageBox.information(self, APP_NAME, "Add some files or a folder first.")
+            return
+        from alexed_bru.ui.duplicates_dialog import DuplicatesDialog  # loaded on demand: startup cost
+        DuplicatesDialog(self, [i.path for i in self.model.items]).exec()
 
     def _selected_rows(self) -> list[int]:
         return sorted({self.proxy.mapToSource(i).row() for i in self.table.selectionModel().selectedRows()})

@@ -14,6 +14,7 @@ It's a single `.exe` for Windows 10/11, with no installer and no registry footpr
 - **Undo any batch later,** even after closing the app.
 - **Rename from tags:** ID3/FLAC/MP4 audio tags, video tags, EXIF dates and PDF/Office properties.
 - **Fast with big folders:** 10,000 files preview in a fraction of a second.
+- **Find duplicate files** by content, not by name, and set the extra copies aside safely.
 
 ## Download
 
@@ -47,6 +48,17 @@ Set `ALEXED_BRU_DATA` to store them somewhere else.
    - While a RegEx or Find & Replace rule is selected, *Original name* shows what it matches instead, with each capture group in its own colour.
    - Status dots: blue = will rename, amber = warning, red = error (skipped).
 4. Click **Rename N files**. You can undo any batch later from **History**, even after restarting the app.
+
+## Duplicate files
+
+Click **Duplicates** to find files in the list that have exactly the same content, even when their names differ (`song.mp3` and `song (1).mp3`, or `IMG_2041.jpg` and `Holiday beach.jpg`).
+
+- Files are compared by size first, then by a hash of their content, so only same-size files are read. Empty files are ignored.
+- In each group, the copy with the original-looking name (not "(1)" or "- Copy"), then the oldest one, is kept. The rest are ticked. You can change the ticks, but each group always keeps at least one file.
+- **Move to _Duplicates folder** moves the ticked copies into a `_Duplicates` folder next to them. It works on every drive, including USB and SD cards, and you can undo it from **History**. Later scans skip `_Duplicates` folders.
+- **Move to Recycle Bin** only works on this PC's own drives. USB/SD cards and network drives have no Recycle Bin (Windows would delete the files permanently), so files there are left alone. Recycled files can be restored from the Recycle Bin, not from History.
+
+Nothing is ever deleted permanently.
 
 ## Regular expressions (RegEx)
 

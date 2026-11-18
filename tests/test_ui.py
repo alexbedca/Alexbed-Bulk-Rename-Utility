@@ -318,3 +318,44 @@ def test_remove_selected_files(app, win, tmp_path):
     win.table.selectRow(0)
     win.remove_selected_files()
     assert [i.name for i in win.model.items] == ["02 two.txt"]
+
+
+def test_find_duplicates_dialog_moves_extra_copies(app, win, tmp_path, monkeypatch):
+    from alexed_bru.ui import duplicates_dialog as dd
+    lib = tmp_path / "dups"
+    lib.mkdir()
+    (lib / "song.mp3").write_bytes(b"tune" * 50)
+    (lib / "song (1).mp3").write_bytes(b"tune" * 50)
+    (lib / "unique.mp3").write_bytes(b"solo" * 50)
+    win.add_paths([lib])
+    assert pump(app, lambda: len(win.model.items) == 3)
+    monkeypatch.setattr(dd.QMessageBox, "information", staticmethod(lambda *a, **k: None))
+    warned = []
+    monkeypatch.setattr(dd.QMessageBox, "warning", staticmethod(lambda *a, **k: warned.append(a)))
+
+    dlg = dd.DuplicatesDialog(win, [i.path for i in win.model.items])
+    dlg.show()
+    assert pump(app, lambda: dlg._job is None)
+    assert len(dlg.groups) == 1 and dlg.tree.topLevelItemCount() == 1
+    assert [p.name for p in dlg.ticked_paths()] == ["song (1).mp3"]  # the original is kept
+
+    # ticking every copy is refused
+    top = dlg.tree.topLevelItem(0)
+    for i in range(top.childCount()):
+        top.child(i).setCheckState(0, Qt.Checked)
+    assert dlg.ticked_paths() is None
+    dlg._act(recycle=False)
+    assert warned and (lib / "song.mp3").exists() and (lib / "song (1).mp3").exists()
+
+    dlg._fill()  # back to the suggestion
+    dlg._act(recycle=False)
+    assert (lib / "_Duplicates" / "song (1).mp3").exists()
+    assert sorted(i.name for i in win.model.items) == ["song.mp3", "unique.mp3"]
+    assert dlg.tree.topLevelItemCount() == 0
+    assert win.history.batches[-1].label.startswith("Moved 1 duplicate")
+    dlg.close()
+
+    # a fresh scan leaves the set-aside copies out
+    win.clear_files()
+    win.add_paths([lib])
+    assert pump(app, lambda: len(win.model.items) == 2)
