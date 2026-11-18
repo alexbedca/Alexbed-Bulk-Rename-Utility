@@ -359,3 +359,38 @@ def test_find_duplicates_dialog_moves_extra_copies(app, win, tmp_path, monkeypat
     win.clear_files()
     win.add_paths([lib])
     assert pump(app, lambda: len(win.model.items) == 2)
+
+
+def test_regex_from_example_fills_the_rule(app, win, tmp_path):
+    lib = tmp_path / "music"
+    lib.mkdir()
+    for n in ("Adele - Hello.mp3", "Ed Sheeran - Perfect.mp3", "notes.txt"):
+        (lib / n).write_text("x")
+    win.add_paths([lib])
+    assert pump(app, lambda: len(win.model.items) == 3)
+    win.add_rule(RegexRule)
+    ed = win.editor
+    assert ed.generator is not None and not ed.generator.isVisible()
+    ed.gen_toggle.setChecked(True)
+    assert ed.generator.isVisible()
+    assert ed.gen_sample.currentText() == "Adele - Hello.mp3"   # first file filled in
+    assert not ed.gen_use.isEnabled()
+
+    ed.gen_desired.setText("Hello - Adele")
+    assert ed.gen_use.isEnabled()
+    assert "Matches 2 of 3" in ed.gen_status.text()
+    ed.gen_use.click()
+    rule = win.rules[0]
+    assert (rule.pattern, rule.replacement) == (r"^(.+?) - (.+?)$", r"\2 - \1")
+    pump(app)
+    assert win.editor.generator.isVisible()                    # stays open after the rebuild
+    assert "Pattern filled in" in win.editor.gen_status.text()
+    assert pump(app, lambda: idle(win) and win.model.proposals[1].new_name == "Perfect - Ed Sheeran.mp3")
+    assert win.model.proposals[2].status == Status.UNCHANGED
+
+    # an unrelated example offers only the exact-name fallback
+    win.editor.gen_sample.setEditText("notes.txt")
+    win.editor.gen_desired.setText("diary")
+    assert "only renames files named exactly" in win.editor.gen_status.text()
+    win.editor.gen_desired.setText("Notes")
+    assert "Change case" in win.editor.gen_status.text() and not win.editor.gen_use.isEnabled()

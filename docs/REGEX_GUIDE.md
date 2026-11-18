@@ -6,6 +6,31 @@ In the app, open a RegEx Replace rule and use:
 
 - **Examples**: fills in a ready-made pattern. The preview shows the result immediately.
 - **RegEx guide**: this cheat sheet, inside the app.
+- **From example**: show how one file name should look, and the pattern is written for you (next section).
+
+## Generate a pattern from an example
+
+You don't have to write RegEx yourself. In a RegEx Replace rule, click **From example**:
+
+1. **Sample name** is filled in with the file selected in the preview (or the first file). Pick another from the list or type one.
+2. In **How it should look**, type the new name. You can leave out the extension.
+3. The pattern appears underneath, with how many files in your list it matches. Click **Use this pattern** to fill in *Pattern* and *Replace with*, then check the preview.
+
+| Sample | You type | Pattern written for you |
+|---|---|---|
+| `Adele - Hello` | `Hello - Adele` | `^(.+?) - (.+?)$` → `\2 - \1` |
+| `IMG_20230601_142209` | `2023-06-01 14.22.09` | `^.+?_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})$` → `\1-\2-\3 \4.\5.\6` |
+| `01 - Hello` | `Hello` | `^\d+ - (.+?)$` → `\1` |
+| `Song (Live) [2019]` | `Song` | `^(.+?) \(.+?\) \[\d+\]$` → `\1` |
+| `Invoice 31-12-2024` | `Invoice 2024-12-31` | `^(.+?) (\d+)-(\d+)-(\d+)$` → `\1 \4-\3-\2` |
+| `My Holiday Photo` | `My_Holiday_Photo` | `^(.+?) (.+?) (.+?)$` → `\1_\2_\3` |
+
+How it works, and its limits:
+
+- The sample is split into parts at punctuation (` - `, `_`, `.`, brackets) and wherever digits meet letters. Each part you reuse becomes a captured group. Parts you leave out are matched and dropped, so `IMG_` also covers `VID_` and `PXL_`.
+- The pattern follows the **shape** of the sample from start to end. A file with a different shape (for example no brackets, or four words instead of three) is **left unchanged** rather than renamed wrongly. The match count and the preview show which files it fits.
+- The pattern is always tested on your sample first. If no general pattern gives exactly what you typed, for example `random` → `invoice`, you get a pattern that renames **only files named exactly like the sample**, with a note saying so.
+- Changing only capital letters (`adele - hello` → `Adele - Hello`) can't be done with RegEx. Add a **Change case** rule instead. To change the extension, add an **Extension** rule.
 
 ## How to work
 

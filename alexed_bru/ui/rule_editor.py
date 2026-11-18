@@ -4,12 +4,14 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from html import escape
+from typing import Callable
 
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QFormLayout, QHBoxLayout,
-                               QLabel, QLineEdit, QListWidget, QListWidgetItem, QMenu, QSpinBox,
-                               QToolButton, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QFormLayout, QFrame,
+                               QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMenu,
+                               QPushButton, QSpinBox, QToolButton, QVBoxLayout, QWidget)
 
 from alexed_bru.core.tags import TAG_CATALOGUE
 from alexed_bru.skills.base import BOOL, CHOICE, INT, REGEX, RULE_REGISTRY, TEMPLATE, Rule
@@ -135,6 +137,14 @@ class RuleEditor(QWidget):
         self._lay.setContentsMargins(0, 0, 0, 0)
         self._lay.setSpacing(8)
         self.focused_template: QLineEdit | None = None
+        # File names for "Generate from example": selected files first, then the rest.
+        self.sample_names: Callable[[], list[str]] = lambda: []
+        self._gen_open = False
+        self._gen_sample = ""
+        self._gen_desired = ""
+        self._gen_note = ""
+        self._generated = None
+        self.generator: QFrame | None = None
         self.set_rule(None)
 
     def _clear(self) -> None:
@@ -167,6 +177,10 @@ class RuleEditor(QWidget):
         self._lay.addWidget(desc)
         if rule.EXAMPLES:
             self._lay.addLayout(self._examples_row(rule))
+        self.generator = None
+        if rule.TYPE == "regex":
+            self.generator = self._build_generator()
+            self._lay.addWidget(self.generator)
 
         # Labels above their fields: the panel is narrow, and long labels or
         # options side by side were cut off at the right edge.
@@ -225,8 +239,125 @@ class RuleEditor(QWidget):
             guide.setToolTip("How patterns work, with a cheat sheet")
             guide.clicked.connect(self.show_regex_guide)
             row.addWidget(guide)
+            self.gen_toggle = QToolButton()
+            self.gen_toggle.setText("From example")
+            self.gen_toggle.setObjectName("Flat")
+            self.gen_toggle.setCheckable(True)
+            self.gen_toggle.setChecked(self._gen_open)
+            self.gen_toggle.setToolTip("Show how one file name should look; the pattern is written for you")
+            self.gen_toggle.toggled.connect(self._toggle_generator)
+            row.addWidget(self.gen_toggle)
         row.addStretch(1)
         return row
+
+    # ---- Generate from example ---------------------------------------------
+    def _build_generator(self) -> QFrame:
+        box = QFrame()
+        box.setObjectName("Generator")
+        box.setStyleSheet(f"#Generator {{ background:{C.SURFACE_2}; border:1px solid {C.BORDER}; "
+                          f"border-radius:8px; }}")
+        lay = QVBoxLayout(box)
+        lay.setContentsMargins(10, 8, 10, 10)
+        lay.setSpacing(4)
+        head = QLabel("Generate from example")
+        head.setStyleSheet("font-weight:600;")
+        lay.addWidget(head)
+        lab = QLabel("Sample name")
+        lab.setObjectName("Dim")
+        lay.addWidget(lab)
+        self.gen_sample = QComboBox()
+        self.gen_sample.setEditable(True)
+        self.gen_sample.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.gen_sample.setMinimumContentsLength(10)
+        self.gen_sample.lineEdit().setPlaceholderText("A file name from your list")
+        lay.addWidget(self.gen_sample)
+        lab = QLabel("How it should look")
+        lab.setObjectName("Dim")
+        lab.setContentsMargins(0, 4, 0, 0)
+        lay.addWidget(lab)
+        self.gen_desired = QLineEdit(self._gen_desired)
+        self.gen_desired.setClearButtonEnabled(True)
+        self.gen_desired.setPlaceholderText("Type the new name (extension optional)")
+        lay.addWidget(self.gen_desired)
+        self.gen_status = QLabel()
+        self.gen_status.setWordWrap(True)
+        self.gen_status.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.gen_status.setContentsMargins(0, 4, 0, 0)
+        lay.addWidget(self.gen_status)
+        self.gen_use = QPushButton("Use this pattern")
+        self.gen_use.setObjectName("Primary")
+        self.gen_use.clicked.connect(self._use_generated)
+        lay.addWidget(self.gen_use, 0, Qt.AlignLeft)
+
+        self._fill_samples()
+        self.gen_sample.currentTextChanged.connect(self._update_generated)
+        self.gen_desired.textChanged.connect(self._update_generated)
+        box.setVisible(self._gen_open)
+        self._update_generated()
+        return box
+
+    def _fill_samples(self) -> None:
+        names = self.sample_names()[:300]
+        current = self._gen_sample or (names[0] if names else "")
+        self.gen_sample.blockSignals(True)
+        self.gen_sample.clear()
+        self.gen_sample.addItems(names)
+        self.gen_sample.setEditText(current)
+        self.gen_sample.blockSignals(False)
+
+    def _toggle_generator(self, on: bool) -> None:
+        self._gen_open = on
+        if self.generator is None:
+            return
+        if on:
+            self._gen_sample = ""  # start from the file selected now
+            self._fill_samples()
+            self._update_generated()
+        self.generator.setVisible(on)
+        if on:
+            self.gen_desired.setFocus()
+
+    def _update_generated(self, *_args) -> None:
+        from alexed_bru.skills.regex_infer import count_matches, infer
+        self._gen_sample = self.gen_sample.currentText()
+        self._gen_desired = self.gen_desired.text()
+        self._generated = None
+        self.gen_use.setEnabled(False)
+        if self._gen_note:  # shown once, right after "Use this pattern"
+            note, self._gen_note = self._gen_note, ""
+            self._set_gen_status(escape(note), C.OK)
+            return
+        if not self._gen_sample.strip():
+            self._set_gen_status("Add files to the list, or type a sample name.", C.DIM)
+            return
+        if not self._gen_desired.strip():
+            self._set_gen_status("Type how this name should look. The pattern is written for you.", C.DIM)
+            return
+        result = infer(self._gen_sample, self._gen_desired)
+        if not result.ok:
+            self._set_gen_status(escape(result.message), C.WARN)
+            return
+        self._generated = result
+        names = self.sample_names()
+        mono = "font-family:Consolas,monospace;"
+        rule = (f"<span style='{mono} color:{C.CYAN}'>{escape(result.pattern)}</span> → "
+                f"<span style='{mono} color:{C.CYAN}'>{escape(result.replacement) or '(nothing)'}</span>")
+        if result.general:
+            hits = count_matches(result.pattern, names)
+            self._set_gen_status(f"{rule}<br>Matches {hits:,} of {len(names):,} file(s) in the list.", C.TEXT)
+        else:
+            self._set_gen_status(f"{escape(result.message)}<br>{rule}", C.WARN)
+        self.gen_use.setEnabled(True)
+
+    def _set_gen_status(self, html: str, colour: str) -> None:
+        self.gen_status.setText(f"<span style='color:{colour}'>{html}</span>")
+
+    def _use_generated(self) -> None:
+        result = self._generated
+        if result is None or self.rule is None:
+            return
+        self._gen_note = "Pattern filled in below. Check the preview, then press Rename files."
+        self.use_example({"pattern": result.pattern, "replacement": result.replacement})
 
     def use_example(self, params: dict) -> None:
         if self.rule is None:

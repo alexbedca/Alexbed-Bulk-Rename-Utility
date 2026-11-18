@@ -265,6 +265,7 @@ class MainWindow(QMainWindow):
         el.setContentsMargins(14, 12, 14, 12)
         el.addWidget(section_title("Rule settings"))
         self.editor = RuleEditor()
+        self.editor.sample_names = self._sample_names
         self.editor.changed.connect(self._on_rule_edited)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -432,6 +433,13 @@ class MainWindow(QMainWindow):
 
     def remove_selected_files(self) -> None:
         self.model.remove_rows(self._selected_rows())
+
+    def _sample_names(self) -> list[str]:
+        """Names for RegEx 'From example': selected files first, then the list order."""
+        items = self.model.items
+        selected = [items[r].name for r in self._selected_rows() if r < len(items)] \
+            if hasattr(self, "table") else []
+        return list(dict.fromkeys(selected + [i.name for i in items]))
 
     def forget_files(self, paths: list[Path]) -> None:
         """Drop files from the list (they were moved away or recycled)."""

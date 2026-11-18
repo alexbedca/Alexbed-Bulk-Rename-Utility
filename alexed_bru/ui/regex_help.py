@@ -54,6 +54,8 @@ def guide_html() -> str:
         "<b>RegEx Replace</b> rule finds every part of the file name that matches the pattern and "
         "swaps it for <b>Replace with</b>. Only the name changes; the extension is left alone "
         "unless you set <i>Apply to</i>.</p>",
+        "<p><b>Don't want to write one?</b> Click <i>From example</i> in the rule, pick a file and "
+        "type how its name should look. The pattern is written and tested for you.</p>",
         "<p><b>How to work:</b> type a pattern and watch the preview. Matches are highlighted in the "
         "<i>Original name</i> column (each captured group in its own colour), and nothing on disk "
         "changes until you press <i>Rename files</i>. A red pattern box means the pattern has a "

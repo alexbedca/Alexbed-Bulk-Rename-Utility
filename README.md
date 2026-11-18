@@ -66,6 +66,7 @@ New to RegEx? Open a **RegEx Replace** rule:
 
 - **Examples** fills in a ready-made pattern, such as removing track numbers, swapping "Artist - Title", or turning `IMG_20230601_142209` into a date. You see the result in the preview straight away.
 - **RegEx guide** opens a cheat sheet. The same guide is in [docs/REGEX_GUIDE.md](docs/REGEX_GUIDE.md).
+- **From example** writes the pattern for you: pick a file and type how its name should look (for example `Adele - Hello` → `Hello - Adele`). It shows the pattern and how many files it matches before you use it. Files with a different shape are left unchanged. See [Generate a pattern from an example](docs/REGEX_GUIDE.md#generate-a-pattern-from-an-example).
 
 ![RegEx capture groups highlighted in the preview](docs/screenshots/regex-groups.png)
 

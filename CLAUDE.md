@@ -8,7 +8,9 @@ Reads audio (mutagen), video (MP4/MOV atoms), EXIF (Pillow) and PDF/Office metad
 
 - **Status:** v1.0.0 released 2026-11-06. Public repo https://github.com/alexbedca/Alexed-Bulk-Rename-Utility
   (GPL-3.0-or-later). Release assets: `AlexedBulkRename.exe` + `AlexedBulkRename.exe.sha256`.
-  Later commits on `main` (speed-ups, renumbering fixes, RegEx examples/guide) are **not in a release yet**.
+  Later commits on `main` (speed-ups, renumbering fixes, RegEx examples/guide, Find duplicates, RegEx from example) are **not in a release yet**.
+- **Planned next (not built):** single-file name edits in the
+  preview, plainer rule summaries, optional Windows Send To shortcut.
 - **No CI** (no `.github/` folder): tests only run locally.
 - **Known limits:** MKV/AVI/WebM tags not read; folders themselves are not renamed.
 - **Read first:** `README.md` (user view), `docs/ARCHITECTURE.md` (layout, data flow, safety model, how to add rules),
