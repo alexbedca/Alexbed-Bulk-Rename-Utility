@@ -17,6 +17,8 @@ Reads audio (mutagen), video (MP4/MOV atoms), EXIF (Pillow) and PDF/Office metad
   upload it in repo Settings → Social preview via Claude in Chrome.
 - **No CI** (no `.github/` folder): tests only run locally.
 - **Known limits:** MKV/AVI/WebM tags not read; folders themselves are not renamed.
+- **Roadmap:** `docs/ROADMAP.md` (v1.2.0+ in four phases, with safety notes per item). Update its status marks
+  when a feature ships.
 - **Read first:** `README.md` (user view), `docs/ARCHITECTURE.md` (layout, data flow, safety model, how to add rules),
   `docs/RESEARCH.md` (competitors, UX flaws fixed), `docs/REGEX_GUIDE.md`.
 

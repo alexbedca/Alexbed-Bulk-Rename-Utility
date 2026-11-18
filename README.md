@@ -192,6 +192,7 @@ engine.apply(paths, overrides={r"C:\Music\01.mp3": "Intro.mp3"})
 - [docs/REGEX_GUIDE.md](docs/REGEX_GUIDE.md): RegEx cheat sheet, worked example and recipes
 - [docs/RESEARCH.md](docs/RESEARCH.md): competitive analysis, the UX flaws we fix, feature checklist
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): stack, layout, data flow, safety model, how to add skills
+- [docs/ROADMAP.md](docs/ROADMAP.md): what comes next (v1.2.0 and later)
 
 Tests: `.venv\Scripts\python -m pytest` (about 14s; slow tests are skipped by default). The real 10,000-file rename/undo runs are marked slow: `.venv\Scripts\python -m pytest -m slow` (a few minutes; on this PC rename and undo each took about 4s, the rest is creating the files).
 
