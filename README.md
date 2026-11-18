@@ -18,6 +18,14 @@ It's a single `.exe` for Windows 10/11, with no installer and no registry footpr
 - **Fix single files by hand:** double-click a new name to type your own.
 - **Find duplicate files** by content, not by name, and set the extra copies aside safely.
 
+## How-to video
+
+New to the app? Watch the 3-minute narrated walkthrough:
+**[Alexed-Bulk-Rename-Utility-how-to.mp4](https://github.com/alexbedca/Alexed-Bulk-Rename-Utility/releases/download/v1.1.0/Alexed-Bulk-Rename-Utility-how-to.mp4)**
+(1080p, 8 MB, with subtitles). It covers adding files and rules, the preview, RegEx from an example,
+hand-edited names, auto-numbering, rename and undo, finding duplicates, tag-based names and the Send To menu.
+It's built from real screenshots by `tools\make_tutorial_video.py`.
+
 ## Download
 
 Get `AlexedBulkRename.exe` from the [latest release](../../releases/latest) and run it. No install is needed.

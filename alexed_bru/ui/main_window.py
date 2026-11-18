@@ -32,7 +32,7 @@ from alexed_bru.ui.preview_model import (COL_FOLDER, COL_INCLUDE, COL_INFO, COL_
                                          COL_STATUS, FilterProxy, HighlightDelegate, RenameModel,
                                          natural_name, path_key)
 from alexed_bru.ui.icons import icon
-from alexed_bru.ui.rule_editor import RuleEditor, RuleRow, RuleStack, rules_menu
+from alexed_bru.ui.rule_editor import RuleEditor, RuleRow, RuleStack, menu_text, rules_menu
 from alexed_bru.ui.theme import ADDED_COLOUR, REMOVED_COLOUR, C, dark_title_bar
 from alexed_bru.ui.workers import Job, JobRunner
 
@@ -819,10 +819,10 @@ class MainWindow(QMainWindow):
         if not saved:
             menu.addAction("(none saved yet)").setEnabled(False)
         for p in saved:
-            menu.addAction(p.stem, lambda path=p: self.load_preset(path))
+            menu.addAction(menu_text(p.stem), lambda path=p: self.load_preset(path))
         menu.addSection("Starter presets")
         for name, rules in presets.samples().items():
-            menu.addAction(name, lambda r=rules: self.set_rules([x.clone() for x in r]))
+            menu.addAction(menu_text(name), lambda r=rules: self.set_rules([x.clone() for x in r]))
         menu.addSeparator()
         menu.addAction("Open presets folder", lambda: QDesktopServices.openUrl(
             QUrl.fromLocalFile(str(presets_dir()))))

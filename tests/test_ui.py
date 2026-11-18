@@ -394,3 +394,9 @@ def test_regex_from_example_fills_the_rule(app, win, tmp_path):
     assert "only renames files named exactly" in win.editor.gen_status.text()
     win.editor.gen_desired.setText("Notes")
     assert "Change case" in win.editor.gen_status.text() and not win.editor.gen_use.isEnabled()
+
+
+def test_menus_show_ampersands(app, win):
+    from alexed_bru.ui.rule_editor import rules_menu
+    texts = [a.text() for a in rules_menu(win, lambda c: None).actions()]
+    assert "Find && Replace" in texts and "Trim && Clean" in texts   # "&&" is drawn as "&"

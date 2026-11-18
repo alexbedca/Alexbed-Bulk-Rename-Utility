@@ -19,6 +19,12 @@ from alexed_bru.ui.icons import icon
 from alexed_bru.ui.theme import C
 
 
+def menu_text(text: str) -> str:
+    """Qt reads "&" in menu text as a keyboard-shortcut marker ("Find & Replace" showed as
+    "Find _Replace"); "&&" shows a real ampersand."""
+    return text.replace("&", "&&")
+
+
 def rules_menu(parent: QWidget, on_pick) -> QMenu:
     """'Add rule' menu grouped by category."""
     menu = QMenu(parent)
@@ -30,7 +36,7 @@ def rules_menu(parent: QWidget, on_pick) -> QMenu:
             menu.addSeparator()
         menu.addSection(category)
         for cls in groups.get(category, []):
-            act = menu.addAction(cls.LABEL)
+            act = menu.addAction(menu_text(cls.LABEL))
             act.setToolTip(cls.DESCRIPTION)
             act.triggered.connect(lambda _=False, c=cls: on_pick(c))
     menu.setToolTipsVisible(True)
@@ -44,7 +50,7 @@ def tags_menu(parent: QWidget, on_pick) -> QMenu:
         sub = menu.addMenu(group)
         sub.setToolTipsVisible(True)
         for tag, desc in entries:
-            act = QAction(f"{tag}    {desc}", sub)
+            act = QAction(menu_text(f"{tag}    {desc}"), sub)
             act.triggered.connect(lambda _=False, t=tag: on_pick(t))
             sub.addAction(act)
     return menu
@@ -232,7 +238,7 @@ class RuleEditor(QWidget):
         menu = QMenu(examples)
         menu.setLayoutDirection(Qt.LeftToRight)  # the button is RTL only to put its arrow last
         for title, sample, params in rule.EXAMPLES:
-            act = menu.addAction(f"{title}\t{sample}")
+            act = menu.addAction(menu_text(f"{title}\t{sample}"))
             act.triggered.connect(lambda _=False, p=params: self.use_example(p))
         examples.setMenu(menu)
         row.addWidget(examples)

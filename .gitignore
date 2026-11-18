@@ -7,3 +7,6 @@ dist/
 *.spec
 AlexedBRU_data/
 test_library/
+
+# Tutorial video build output
+video/
