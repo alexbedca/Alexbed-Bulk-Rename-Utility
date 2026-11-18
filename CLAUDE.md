@@ -58,5 +58,6 @@ build.ps1                 venv + tests + PyInstaller -> dist\AlexedBulkRename.ex
 - Startup was cut from 15–18 s to 4–6 s on PCs with many fonts (commit c9f7cc5); keep an eye on startup cost when
   adding UI.
 - `dist/`, `*.spec`, `AlexedBRU_data/`, `test_library/` and the release exe are git-ignored.
-- **Open question (2026-11-13):** `tests/test_stress_and_locks.py` is untracked and looks like a pasted template
+- `tests/test_stress_and_locks.py` (committed 2026-11-18 at Alexander's request) simulates renames with os.rename/MagicMock;
+  it does not exercise the real engine. Its 10k test is marked slow.
   ("Assuming your engine imports look similar to this"). Ask Alexander before committing or deleting it.
