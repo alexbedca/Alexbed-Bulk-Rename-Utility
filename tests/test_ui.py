@@ -382,7 +382,7 @@ def test_regex_from_example_fills_the_rule(app, win, tmp_path):
     ed.gen_use.click()
     rule = win.rules[0]
     assert (rule.pattern, rule.replacement) == (r"^(.+?) - (.+?)$", r"\2 - \1")
-    pump(app)
+    pump(app, timeout=0.2)  # let the rebuilt panel show
     assert win.editor.generator.isVisible()                    # stays open after the rebuild
     assert "Pattern filled in" in win.editor.gen_status.text()
     assert pump(app, lambda: idle(win) and win.model.proposals[1].new_name == "Perfect - Ed Sheeran.mp3")
