@@ -18,7 +18,8 @@ import os
 from pathlib import Path
 from typing import Callable, Iterable, Sequence
 
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, QRect, QSortFilterProxyModel, Qt, Signal
+from PySide6.QtCore import (QAbstractTableModel, QByteArray, QMimeData, QModelIndex, QRect, QSortFilterProxyModel,
+                            Qt, Signal)
 from PySide6.QtGui import QBrush, QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QStyle, QStyledItemDelegate, QStyleOptionViewItem
 
@@ -153,6 +154,13 @@ class RenameModel(QAbstractTableModel):
         if changed:
             self.manualChanged.emit()
 
+    def set_manual(self, names: dict[int, str]) -> None:
+        """Hand-typed names for many rows at once (e.g. imported from a CSV)."""
+        for r, name in names.items():
+            self.items[r].manual = name
+        if names:
+            self.manualChanged.emit()
+
     def manual_rows(self, rows: Iterable[int]) -> list[int]:
         return [r for r in rows if self.items[r].manual]
 
@@ -183,8 +191,65 @@ class RenameModel(QAbstractTableModel):
             return HEADERS[section]
         return None
 
+    # ---- manual order: move rows, drag and drop --------------------------------
+    ROWS_MIME = "application/x-alexbed-rows"
+
+    def reorder(self, order: list[int]) -> None:
+        """Put the rows in a new order (indices of the current rows). Counters follow it."""
+        if order == list(range(len(self.items))):
+            return
+        self.layoutAboutToBeChanged.emit()
+        self.items = [self.items[i] for i in order]
+        self.proposals = [self.proposals[i] for i in order]
+        self.layoutChanged.emit()
+        self.itemsChanged.emit()
+
+    def move_rows(self, rows: Iterable[int], where: str) -> list[int]:
+        """Move rows "up", "down", "top" or "bottom" (or before row N, given as an int).
+        Returns where the moved rows ended up."""
+        rows = sorted(set(rows))
+        n = len(self.items)
+        if not rows:
+            return []
+        rest = [i for i in range(n) if i not in set(rows)]
+        if where == "top":
+            at = 0
+        elif where == "bottom":
+            at = len(rest)
+        elif where == "up":
+            at = max(0, sum(1 for i in rest if i < rows[0]) - 1)
+        elif where == "down":
+            at = min(len(rest), sum(1 for i in rest if i <= rows[-1]) + 1)
+        else:  # before row index `where`
+            at = sum(1 for i in rest if i < int(where))
+        order = rest[:at] + rows + rest[at:]
+        self.reorder(order)
+        return list(range(at, at + len(rows)))
+
+    def supportedDropActions(self):
+        return Qt.MoveAction
+
+    def mimeTypes(self):
+        return [self.ROWS_MIME]
+
+    def mimeData(self, indexes):
+        data = QMimeData()
+        rows = sorted({i.row() for i in indexes if i.isValid()})
+        data.setData(self.ROWS_MIME, QByteArray(",".join(map(str, rows)).encode()))
+        return data
+
+    def dropMimeData(self, data, action, row, column, parent) -> bool:
+        if not data.hasFormat(self.ROWS_MIME):
+            return False
+        rows = [int(r) for r in bytes(data.data(self.ROWS_MIME)).decode().split(",") if r]
+        target = row if row != -1 else (parent.row() if parent.isValid() else len(self.items))
+        self.move_rows(rows, target)
+        return False  # reordering is done; tell the view not to remove the dragged rows
+
     def flags(self, index):
-        base = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        if not index.isValid():
+            return Qt.ItemIsDropEnabled  # drop below the last row
+        base = Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled
         if index.column() == COL_INCLUDE:
             base |= Qt.ItemIsUserCheckable
         elif index.column() == COL_NEW and self.items[index.row()].include:

@@ -32,12 +32,14 @@ Python 3.11+ (venv in `.venv`), PySide6-Essentials (Qt 6), mutagen, pypdf, Pillo
 alexed_bru/__init__.py    APP_NAME / APP_VERSION (single place for the version)
 alexed_bru/paths.py       portable data dir: AlexbedBRU_data\ next to the exe (override: ALEXBED_BRU_DATA)
 alexed_bru/core/          engine, pipeline (pure), validation (+ auto-number), transaction (two-phase + rollback),
-                          history (+ managed folders), presets, tags, duplicates (content finder), flatten (folder flatten),
-                          sendto (Explorer shortcut)
+                          history (+ managed folders, clear), presets, tags, duplicates (content finder), flatten (folder
+                          flatten), sendto (Explorer shortcut), listio (CSV/TXT export/import),
+                          sorting (order by tags), recipes (Quick Recipes)
 alexed_bru/skills/        rule base + registry (rules.py, plain-English summary() per rule), regex_infer
                           (RegEx from example), metadata providers (system/audio/video/document/image)
 alexed_bru/ui/            main_window, preview_model (virtualised table + highlight delegate; New name editable),
-                          rule_editor (+ From example panel), duplicates_dialog, flatten_dialog, regex_help, workers, theme
+                          rule_editor (+ From example panel), duplicates_dialog, flatten_dialog, single_instance (one window
+                          via QLocalServer), regex_help, workers, theme
 tests/                    pytest: engine, rules, metadata, media, ui, large (10k files, marked slow)
 assets/branding, assets/ui  logo/icon, UI icons
 test_library/             sample messy files for manual testing (git-ignored)
@@ -70,6 +72,10 @@ build.ps1                 venv + tests + PyInstaller -> dist\AlexbedBulkRename.e
 - Hand-typed names (`FileItem.manual`) and auto-numbering only change *proposed names* before validation, so
   rename/undo need nothing special. Duplicate finder's "Move to _Duplicates" also goes through `transaction.execute`.
   Its Recycle Bin path is the one place files leave; it's refused on non-fixed drives (they'd be deleted permanently).
+- **Privacy:** no log/crash/debug files ever (logging goes to a NullHandler in `ui/app.py`); the data folder
+  holds only history.json, settings.json, presets/ (`tests/test_privacy.py` checks both). History has Clear.
+- Tests: the `win` fixture deletes each window afterwards and uses a 5 ms preview delay; without that, closed
+  windows piled up and the fast suite drifted past 15 s.
 - Shell edits: in Git Bash heredocs, `\\n` inside Python strings turned into real line breaks twice. Write patch
   scripts to a file with the Write tool instead.
 - New rules: subclass `Rule`, declare params with `param(...)`, decorate `@register_rule`; the UI form and preset

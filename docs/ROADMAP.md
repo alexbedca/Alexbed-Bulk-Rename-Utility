@@ -59,7 +59,7 @@ Templates that include `\`, e.g. `<artist>\<album>\<track:2>. <title>` or `<date
 
 ## Phase 2: Workflow and power polish (v1.3.0)
 
-### ☐ Single instance for Send To
+### ☑ Single instance for Send To (v1.3.0)
 Today Send To opens a second window if the app is already running.
 - Use a `QLocalServer`/`QLocalSocket` named per user (+ per exe path, so two portable copies don't collide).
   A second launch sends its file list to the running window and exits.
@@ -67,13 +67,13 @@ Today Send To opens a second window if the app is already running.
   selections, tell the user to drag the files in instead.
 - Fall back to opening normally if the socket fails; never lose the file list. Tests use a unique server name.
 
-### ☐ One-click Quick Recipes
+### ☑ One-click Quick Recipes (v1.3.0)
 Starter recipes on an empty rule stack ("Tidy music from tags", "Photos by date taken", "Number files 01, 02…",
 "Clean messy names"). They are presets with a picture and a one-line description.
 - Reuse `core/presets.py`; recipes are data (JSON), not code, so users can add their own.
 - Each shows a live before/after example from the user's own first file.
 
-### ☐ Sort by metadata before numbering
+### ☑ Sort by metadata before numbering (v1.3.0)
 Choose the order that counters follow: by name (natural), date taken, track number, file date, size; plus
 drag-to-reorder rows.
 - Today the counter follows the list order (sorting reorders the real list). Keep one source of truth: the
@@ -82,7 +82,7 @@ drag-to-reorder rows.
   previews do. Keep 10,000-file sorts responsive (sort keys computed once).
 - Manual drag order must survive re-previews and be saved with the session.
 
-### ☐ Import and export rename lists (CSV/TXT)
+### ☑ Import and export rename lists (CSV/TXT) (v1.3.0)
 - **Export:** `old path, new name, status` of the current preview (UTF-8 with BOM for Excel).
 - **Import:** a CSV/TXT of `old name → new name` becomes hand-typed names (`FileItem.manual`), so the normal
   validation, Auto-number, transaction and History apply unchanged.

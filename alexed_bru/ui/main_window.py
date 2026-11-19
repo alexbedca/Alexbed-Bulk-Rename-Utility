@@ -225,6 +225,11 @@ class MainWindow(QMainWindow):
         self.sendto_action.setToolTip("Right-click files in Explorer → Send to → Alexbed Bulk Rename.\n"
                                       "Adds one shortcut to your own Send To folder; no admin rights.")
         self.sendto_action.triggered.connect(self.toggle_sendto)
+        self.more_menu.addSeparator()
+        self.more_menu.addAction("Export list (CSV / TXT)…", self.export_list)
+        self.more_menu.addAction("Import new names…", self.import_names)
+        self.more_menu.addAction("Reset all typed names", self.reset_all_typed)
+        self.more_menu.addSeparator()
         self.more_menu.addAction("Open data folder", lambda: QDesktopServices.openUrl(
             QUrl.fromLocalFile(str(data_dir()))))
         self.more_menu.setToolTipsVisible(True)
@@ -261,7 +266,11 @@ class MainWindow(QMainWindow):
         self.stack.enabledChanged.connect(self._on_rule_toggled)
         self.stack.setContextMenuPolicy(Qt.CustomContextMenu)
         self.stack.customContextMenuRequested.connect(self._rule_context_menu)
-        sl.addWidget(self.stack, 1)
+        # While there are no rules, Quick Recipe cards take the list's place.
+        self.rule_area = QStackedWidget()
+        self.rule_area.addWidget(self._build_recipes())
+        self.rule_area.addWidget(self.stack)
+        sl.addWidget(self.rule_area, 1)
 
         tools = QHBoxLayout()
         tools.setSpacing(4)
@@ -302,6 +311,66 @@ class MainWindow(QMainWindow):
         split.setMinimumWidth(340)
         return split
 
+    def _build_recipes(self) -> QWidget:
+        from alexed_bru.core.recipes import RECIPES
+        box = QWidget()
+        lay = QVBoxLayout(box)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(4)
+        hint = QLabel("Quick start: pick a recipe, or <b>+ Add rule</b>.")
+        hint.setObjectName("Dim")
+        lay.addWidget(hint)
+        self.recipe_cards = {}
+        for recipe in RECIPES:
+            card = QPushButton()
+            card.setObjectName("RecipeCard")
+            card.setCursor(Qt.PointingHandCursor)
+            card.setStyleSheet(f"#RecipeCard {{ text-align:left; padding:6px 10px; border-radius:8px; "
+                               f"background:{C.SURFACE_2}; border:1px solid {C.BORDER}; }}"
+                               f"#RecipeCard:hover {{ border-color:{C.ACCENT_HI}; }}")
+            inner = QVBoxLayout(card)
+            inner.setContentsMargins(10, 3, 10, 3)
+            inner.setSpacing(1)
+            title = QLabel(recipe.title)
+            title.setStyleSheet("font-weight:600; background:transparent;")
+            example = QLabel()
+            example.setStyleSheet(f"font-size:8.5pt; color:{C.DIM}; background:transparent;")
+            for w in (title, example):
+                w.setAttribute(Qt.WA_TransparentForMouseEvents)
+                inner.addWidget(w)
+            card.setMinimumHeight(40)
+            card.clicked.connect(lambda _=False, rec=recipe: self.use_recipe(rec))
+            lay.addWidget(card)
+            self.recipe_cards[recipe.key] = (card, example)
+        lay.addStretch(1)
+        self._refresh_recipes()
+        return box
+
+    def _refresh_recipes(self) -> None:
+        """Each card's example: what it would do to the first listed file, or a sample."""
+        from alexed_bru.core.recipes import RECIPES
+        first = self.model.items[0] if self.model.items else None
+        for recipe in RECIPES:
+            card, label = self.recipe_cards[recipe.key]
+            before, after = recipe.example
+            if first is not None:
+                try:
+                    row = RenameEngine(recipe.make(), self.store).preview([first.path])[0]
+                    if row.proposed != row.original:
+                        before, after = row.original, row.proposed
+                except Exception:  # noqa: BLE001 (an example must never break the window)
+                    pass
+            text = f"{before}  →  {after}"
+            label.setText(label.fontMetrics().elidedText(text, Qt.ElideMiddle, 300))
+            card.setToolTip(f"{recipe.title}\n{before}  →  {after}"
+                            + ("\nAlso sorts the list first so numbers follow it." if recipe.sort else ""))
+
+    def use_recipe(self, recipe) -> None:
+        self.set_rules(recipe.make())
+        if recipe.sort and self.model.items:
+            self.sort_by(recipe.sort)
+        self.status_text.setText(f"Recipe “{recipe.title}” loaded: change any rule, or Ctrl+Z to undo.")
+
     def _build_right(self) -> QWidget:
         split = QSplitter(Qt.Vertical)
         split.setChildrenCollapsible(True)
@@ -330,6 +399,30 @@ class MainWindow(QMainWindow):
         self.auto_number.setChecked(bool(self.settings.get("auto_number", False)))
         self.auto_number.toggled.connect(self.schedule_preview)
         bar.addWidget(self.auto_number)
+        bar.addSpacing(6)
+        sort_btn = QToolButton()
+        sort_btn.setText("Sort by")
+        sort_btn.setIcon(icon("chevron"))
+        sort_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        sort_btn.setLayoutDirection(Qt.RightToLeft)
+        sort_btn.setPopupMode(QToolButton.InstantPopup)
+        sort_btn.setToolTip("Put the files in order before numbering: counters follow the list order.\n"
+                            "You can also drag rows, or move the selected rows with Ctrl+Up / Ctrl+Down.")
+        self.sort_menu = QMenu(sort_btn)
+        self.sort_menu.setLayoutDirection(Qt.LeftToRight)
+        from alexed_bru.core.sorting import SORTS
+        for key, label in SORTS:
+            self.sort_menu.addAction(label, lambda k=key: self.sort_by(k))
+        self.sort_menu.addSeparator()
+        self.sort_reverse = self.sort_menu.addAction("Reverse order (newest, largest, Z first)")
+        self.sort_reverse.setCheckable(True)
+        self.sort_menu.addSeparator()
+        for where, label, keys in (("up", "Move selected up", "Ctrl+Up"), ("down", "Move selected down", "Ctrl+Down"),
+                                   ("top", "Move selected to the top", "Ctrl+Shift+Up"),
+                                   ("bottom", "Move selected to the bottom", "Ctrl+Shift+Down")):
+            self.sort_menu.addAction(f"{label}\t{keys}", lambda w=where: self.move_selected(w))
+        sort_btn.setMenu(self.sort_menu)
+        bar.addWidget(sort_btn)
         bar.addStretch(1)
         # Key for the preview highlighting, shown while there is something to rename.
         self.legend = QLabel(
@@ -360,6 +453,13 @@ class MainWindow(QMainWindow):
         self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setDefaultSectionSize(30)
         self.table.setSortingEnabled(True)
+        # Drag rows to put them in order (counters follow); off while a filter hides rows.
+        self.table.setDragEnabled(True)
+        self.table.setAcceptDrops(True)
+        self.table.setDropIndicatorShown(True)
+        self.table.setDragDropMode(QAbstractItemView.InternalMove)
+        self.table.setDefaultDropAction(Qt.MoveAction)
+        self.table.setDragDropOverwriteMode(False)
         self.table.sortByColumn(-1, Qt.AscendingOrder)
         header = self.table.horizontalHeader()
         header.setHighlightSections(False)
@@ -427,6 +527,10 @@ class MainWindow(QMainWindow):
         sc("Ctrl+H", self.show_history)
         sc("Ctrl+F", lambda: (self.search.setFocus(), self.search.selectAll()))
         sc("Delete", self.remove_selected_files, self.table)
+        sc("Ctrl+Up", lambda: self.move_selected("up"), self.table)
+        sc("Ctrl+Down", lambda: self.move_selected("down"), self.table)
+        sc("Ctrl+Shift+Up", lambda: self.move_selected("top"), self.table)
+        sc("Ctrl+Shift+Down", lambda: self.move_selected("bottom"), self.table)
         sc("Delete", self.delete_rule, self.stack)
 
     # ======================================================================
@@ -471,6 +575,66 @@ class MainWindow(QMainWindow):
             if hasattr(self, "table") else []
         return list(dict.fromkeys(selected + [i.name for i in items]))
 
+    # ---- export / import of name lists ------------------------------------------
+    def export_list(self) -> None:
+        if not self.model.items:
+            QMessageBox.information(self, APP_NAME, "Add some files first.")
+            return
+        from alexed_bru.core import listio
+        start = str(Path(self.settings.get("last_dir", "")) / "rename list.csv")
+        path, chosen = QFileDialog.getSaveFileName(
+            self, "Export list", start, "Spreadsheet (*.csv);;Text, original<TAB>new (*.txt)")
+        if not path:
+            return
+        try:
+            if path.lower().endswith(".txt") or chosen.startswith("Text"):
+                count = listio.export_txt(Path(path), self.model.items, self.model.proposals)
+            else:
+                count = listio.export_csv(Path(path), self.model.items, self.model.proposals)
+        except OSError as exc:
+            QMessageBox.warning(self, APP_NAME, f"Could not save the list.\n\n{exc}")
+            return
+        self.status_text.setText(f"Exported {count:,} file(s) to {Path(path).name}. Edit the New name "
+                                 "column, then use ⋯ → Import new names.")
+
+    def import_names(self, path: Path | None = None) -> None:
+        if not self.model.items:
+            QMessageBox.information(self, APP_NAME, "Add the files first, then import their new names.")
+            return
+        from alexed_bru.core import listio
+        if path is None:
+            chosen, _ = QFileDialog.getOpenFileName(self, "Import new names", self.settings.get("last_dir", ""),
+                                                    "Name lists (*.csv *.txt)")
+            if not chosen:
+                return
+            path = Path(chosen)
+        try:
+            result = listio.import_list(Path(path), self.model.items)
+        except Exception as exc:  # noqa: BLE001 (a broken or foreign file must not crash the app)
+            QMessageBox.warning(self, APP_NAME, f"Could not read the list.\n\n{exc}")
+            return
+        self.model.set_manual(result.names)
+        message = (f"Imported {len(result.names):,} new name(s) as typed names (pencil). "
+                   "Check the preview, then press Rename files.")
+        if result.problems:
+            shown = "\n".join(result.problems[:15]) + ("\n…" if len(result.problems) > 15 else "")
+            QMessageBox.warning(self, APP_NAME, f"{message}\n\nNot used ({len(result.problems):,}):\n{shown}")
+        self.status_text.setText(message)
+
+    def reset_all_typed(self) -> None:
+        self.model.reset_manual(range(len(self.model.items)))
+        self.status_text.setText("All typed names reset; the rules decide again.")
+
+    def receive_files(self, paths: list[str]) -> None:
+        """Files handed over by another launch (Send To while the app is open)."""
+        found = [Path(p) for p in paths if Path(p).exists()]
+        if found:
+            self.add_paths(found)
+        if self.isMinimized():
+            self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
     def forget_files(self, paths: list[Path]) -> None:
         """Drop files from the list (they were moved away or recycled)."""
         gone = {path_key(p) for p in paths}
@@ -500,6 +664,8 @@ class MainWindow(QMainWindow):
         return sorted({self.proxy.mapToSource(i).row() for i in self.table.selectionModel().selectedRows()})
 
     def _on_items_changed(self) -> None:
+        if not self.rules:
+            self._refresh_recipes()
         self.grid_stack.setCurrentIndex(1 if self.model.items else 0)
         self.schedule_preview()
 
@@ -552,6 +718,7 @@ class MainWindow(QMainWindow):
 
     def _rules_structure_changed(self, select: int | None, record: bool = True) -> None:
         self.stack.populate(self.rules, select)
+        self.rule_area.setCurrentIndex(1 if self.rules else 0)
         if select is None or not self.rules:
             self.editor.set_rule(None)
         if record:
@@ -646,6 +813,7 @@ class MainWindow(QMainWindow):
         current = self.current_rule_index()
         self.rules = [Rule.from_dict(d) for d in json.loads(state)]
         self.stack.populate(self.rules, min(max(current, 0), len(self.rules) - 1) if self.rules else None)
+        self.rule_area.setCurrentIndex(1 if self.rules else 0)  # recipe cards when the list is empty
         if not self.rules:
             self.editor.set_rule(None)
         self._update_undo_buttons()
@@ -736,6 +904,54 @@ class MainWindow(QMainWindow):
 
     def _apply_filter(self) -> None:
         self.proxy.set_filter(self.search.text(), self.filter_mode.currentData())
+        filtered = bool(self.search.text()) or self.filter_mode.currentData() != "all"
+        self.table.setDragEnabled(not filtered)  # never drop rows into a filtered view
+
+    # ---- order ------------------------------------------------------------------
+    def sort_by(self, key: str) -> None:
+        from alexed_bru.core import sorting
+        if not self.model.items:
+            return
+        items, reverse, store = self.model.snapshot(), self.sort_reverse.isChecked(), self.store
+        label = dict(sorting.SORTS)[key]
+        needs = sorting.NEEDS.get(key, set())
+
+        def work(progress, cancelled):
+            if needs:
+                store.preload((i.path for i in items), needs, progress, cancelled)
+            if cancelled():
+                return None
+            return sorting.order(items, key, lambda it, ns: store.get(it.path, ns), reverse)
+
+        self._busy(f"Sorting by {label.lower()}…")
+        before = [path_key(i.path) for i in self.model.items]
+        job = Job(0, work)
+        job.signals.result.connect(lambda _g, order: self._sorted(order, before, label))
+        job.signals.error.connect(lambda _g, tb: self._job_error("Sorting failed", tb))
+        self.runner.start(job)
+
+    def _sorted(self, order, before: list[str], label: str) -> None:
+        if order is None or [path_key(i.path) for i in self.model.items] != before:
+            self._idle("Sorting skipped: the list changed meanwhile")
+            return
+        self.table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
+        self.model.reorder(order)
+        self._idle(f"Sorted by {label.lower()}" + (" (reversed)" if self.sort_reverse.isChecked() else "")
+                   + ". Counters follow this order.")
+
+    def move_selected(self, where: str) -> None:
+        rows = self._selected_rows()
+        if not rows:
+            return
+        new_rows = self.model.move_rows(rows, where)
+        self.table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
+        sel = self.table.selectionModel()
+        sel.clearSelection()
+        for r in new_rows:
+            index = self.proxy.mapFromSource(self.model.index(r, 0))
+            sel.select(index, sel.SelectionFlag.Select | sel.SelectionFlag.Rows)
+        if new_rows:
+            self.table.scrollTo(self.proxy.mapFromSource(self.model.index(new_rows[0], 0)))
 
     # ======================================================================
     # Apply / history
@@ -834,6 +1050,10 @@ class MainWindow(QMainWindow):
             menu.addAction("(none saved yet)").setEnabled(False)
         for p in saved:
             menu.addAction(menu_text(p.stem), lambda path=p: self.load_preset(path))
+        menu.addSection("Quick recipes")
+        from alexed_bru.core.recipes import RECIPES
+        for recipe in RECIPES:
+            menu.addAction(menu_text(recipe.title), lambda rec=recipe: self.use_recipe(rec))
         menu.addSection("Starter presets")
         for name, rules in presets.samples().items():
             menu.addAction(menu_text(name), lambda r=rules: self.set_rules([x.clone() for x in r]))
@@ -1004,6 +1224,10 @@ class HistoryDialog(QDialog):
         self.undo_btn = buttons.addButton("Undo batch", QDialogButtonBox.ActionRole)
         self.redo_btn = buttons.addButton("Redo batch", QDialogButtonBox.ActionRole)
         self.undo_btn.setObjectName("Primary")
+        self.clear_btn = buttons.addButton("Clear history", QDialogButtonBox.ResetRole)
+        self.clear_btn.setToolTip("Forget all rename records. Your files stay as they are, "
+                                  "but these batches can no longer be undone.")
+        self.clear_btn.clicked.connect(self._clear)
         buttons.addButton(QDialogButtonBox.Close)
         buttons.rejected.connect(self.reject)
         self.undo_btn.clicked.connect(lambda: self._act(redo=False))
@@ -1011,6 +1235,18 @@ class HistoryDialog(QDialog):
         lay.addWidget(buttons)
         self._fill()
         dark_title_bar(self)
+
+    def _clear(self) -> None:
+        history = self.window_.history
+        if not history.batches:
+            return
+        text = (f"Clear all {len(history.batches):,} rename record(s)?\n\nYour files stay as they are, "
+                "but these batches can no longer be undone or redone.")
+        if QMessageBox.question(self, APP_NAME, text) != QMessageBox.Yes:
+            return
+        history.clear()
+        self._fill()
+        self.window_.status_text.setText("Rename history cleared.")
 
     def _fill(self) -> None:
         self.tree.clear()

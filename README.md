@@ -52,6 +52,11 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 History, presets and settings are stored in `AlexbedBRU_data\` next to the exe (or in an existing `AlexedBRU_data\` from 1.1.0 or older). Copy both together to take your setup to another PC.
 Set `ALEXBED_BRU_DATA` to store them somewhere else.
 
+**Privacy:** the app writes no log, crash or debug files and sends nothing over the network. Its data folder only
+holds your rename history, presets and settings; **History → Clear history** forgets all rename records at any
+time. (Like any single-file app, the exe unpacks its own program files to a temporary folder while it runs and
+removes them when it closes.)
+
 ## Using it
 
 1. Drop files or folders onto the window (subfolders are included if that box is ticked).
@@ -81,12 +86,36 @@ Numbered rows show in amber. This setting is remembered.
 
 ![Auto-numbered duplicate names and a name typed by hand (pencil, italics)](docs/screenshots/auto-number-and-edit.png)
 
+### Quick recipes
+
+With no rules yet, the rule list shows four one-click recipes, each with a live example from your first file:
+**Organize music** (`01. Artist - Title`, sorted by track), **Photos by date taken** (date + counter, sorted
+by date taken), **Clean web downloads** (`%20`, ` (1)`, ` - Copy`, `_` and `.` tidied) and **Strip copy and
+number endings**. They load ordinary rules you can change, Ctrl+Z undoes them, and they stay under
+**Presets ▾** afterwards.
+
+### Put files in order before numbering
+
+Counters follow the order of the list. Use **Sort by ▾** (name, folder, date taken, track number, size, date
+modified, optionally reversed), drag rows, or move the selected rows with **Ctrl+↑ / Ctrl+↓** (and
+**Ctrl+Shift+↑ / ↓** for top/bottom). Files without the tag keep their order at the end. Dragging is off
+while a filter hides rows.
+
+### Edit names in a spreadsheet
+
+**⋯ → Export list** saves a CSV (opens in Excel) or a TXT (`original<TAB>new`). Edit the *New name*
+column, then **⋯ → Import new names**: they come back as hand-typed names (pencil), with all the usual checks,
+and nothing changes until you press Rename. Rows that don't match a listed file are reported, never guessed.
+Cells that Excel could run as formulas (starting with `=`, `+`, `-`, `@`) get a leading `'` on export, removed
+again on import. **⋯ → Reset all typed names** undoes an import.
+
 ### Send To menu (optional)
 
 In the **⋯** menu (top right), tick **Add to Windows "Send To" menu**. Then you can right-click files in Explorer →
 **Send to → Alexbed Bulk Rename** to open them in the app. This adds one shortcut to your own
 `%APPDATA%\Microsoft\Windows\SendTo` folder, needs no admin rights, and unticking removes it.
-If you move the exe, tick it again. If the app is already open, Send To opens a second window.
+If you move the exe, tick it again. If the app is already open, the files go to that window (no second
+window); this also works when you start the exe again with files.
 
 ## Duplicate files
 

@@ -70,6 +70,11 @@ class History:
         self.save()
         return batch
 
+    def clear(self) -> None:
+        """Forget every batch (the user's choice). Files on disk are not touched."""
+        self.batches = []
+        self.save()
+
     # ---- undo / redo ------------------------------------------------------
     def last_applied(self) -> Batch | None:
         return next((b for b in reversed(self.batches) if not b.undone), None)

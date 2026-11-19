@@ -32,9 +32,19 @@ def win(app, tmp_path, monkeypatch):
     import alexed_bru.ui.main_window as mw
     monkeypatch.setattr(mw.QMessageBox, "question", staticmethod(lambda *a, **k: QMessageBox.Yes))
     w = mw.MainWindow()
+    w._preview_timer.setInterval(5)  # the app waits 90 ms for typing to pause; tests needn't
     w.show()
     yield w
     w.close()
+    # Really delete the window: closed-but-alive windows (and their timers) piled up and made
+    # every later test slower.
+    from PySide6.QtCore import QEvent
+    w.runner.cancel_all()
+    for top in QApplication.topLevelWidgets():
+        top.close()
+        top.deleteLater()
+    app.sendPostedEvents(None, QEvent.DeferredDelete)
+    app.processEvents()
     paths.data_dir.cache_clear()
 
 
