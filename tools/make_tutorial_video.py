@@ -48,6 +48,15 @@ SLIDES = [
          caption="Click Add rule and choose what to change. Rules run from top to bottom.",
          say="Click Add rule, and pick what you want to do: replace text, change capitals, add numbers, "
              "and more. You can stack several rules. They run from top to bottom."),
+    dict(title="Start from a recipe", image="recipes.png", boxes=[(12, 70, 392, 350)],
+         caption="No rules yet? Pick a Quick Recipe: it shows what it does to your own file.",
+         say="Not sure where to start? While the rule list is empty, it shows quick recipes: organize music, "
+             "photos by date taken, clean web downloads, and strip copy endings. Each card shows what it would "
+             "do to your own first file. One click loads the rules, and you can change them or undo."),
+    dict(title="Put files in order before numbering", image="cap-sort.png", boxes=["menu"],
+         caption="Sort by name, date taken, track number or size, or drag rows: numbers follow the list.",
+         say="Numbers follow the order of the list. Use Sort by, for example date taken or track number, "
+             "drag rows into place, or move the selected rows with Control and the arrow keys."),
     dict(title="Every rule explains itself", image="main-window.png", boxes=[(12, 70, 392, 350)],
          caption="Each rule card says in plain English what it does.",
          say="Each rule card tells you in plain English what it does. For example: pads numbers to two "
@@ -91,10 +100,11 @@ SLIDES = [
          caption="Templates like <track:2>. <artist> - <title> use the files' own tags.",
          say="Music, photos, videos and documents carry tags. A template such as track, artist, title "
              "builds tidy names from them automatically."),
-    dict(title="Send To menu (optional)", image="cap-more.png", boxes=["menu"],
-         caption="••• menu → Add to Windows “Send To” menu.",
-         say="Optional: in the three dots menu, add the app to Windows' Send To menu. Then you can "
-             "right-click files in Explorer, and send them straight to the app."),
+    dict(title="Spreadsheet and Send To", image="cap-more.png", boxes=["menu"],
+         caption="••• menu: export and import name lists, or add the app to Explorer's Send To.",
+         say="In the three dots menu, you can export the list to a spreadsheet, type new names there, and "
+             "import them back. You can also add the app to Windows' Send To menu: files you send go "
+             "straight into the open window."),
     dict(kind="end", title="Happy renaming!",
          say="That's it! Download Alexbed Bulk Rename Utility free from GitHub. Happy renaming!"),
 ]
@@ -168,6 +178,8 @@ def capture() -> dict:
     with_menu(w, rules_menu(w, lambda c: None), QPoint(272, 115), "cap-addrule.png")
     w._sync_more_menu()
     with_menu(w, w.more_menu, QPoint(1050, 50), "cap-more.png")
+    sort_btn = w.sort_menu.parent()
+    with_menu(w, w.sort_menu, sort_btn.mapTo(w, QPoint(0, sort_btn.height())), "cap-sort.png")
 
     w.clear_files()
     w.add_paths([demo])

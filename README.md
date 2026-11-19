@@ -5,7 +5,7 @@
 A portable, transactional bulk file renamer for big music libraries, photo and video folders and deeply nested document archives.
 It's a single `.exe` for Windows 10/11, with no installer and no registry footprint.
 
-**Version:** 1.2.0 &nbsp;|&nbsp; **Author:** Alexander Bediako &nbsp;|&nbsp; **Licence:** [GPL-3.0-or-later](LICENSE)
+**Version:** 1.3.0 &nbsp;|&nbsp; **Author:** Alexander Bediako &nbsp;|&nbsp; **Licence:** [GPL-3.0-or-later](LICENSE)
 
 > Versions 1.0.0 and 1.1.0 were published under the misspelt name *Alexed*. The app is **Alexbed**; old links
 > redirect here, and an existing `AlexedBRU_data` folder keeps being used, so your history and settings stay.
@@ -93,6 +93,8 @@ With no rules yet, the rule list shows four one-click recipes, each with a live 
 by date taken), **Clean web downloads** (`%20`, ` (1)`, ` - Copy`, `_` and `.` tidied) and **Strip copy and
 number endings**. They load ordinary rules you can change, Ctrl+Z undoes them, and they stay under
 **Presets ▾** afterwards.
+
+![Quick recipe cards and the Sort by menu](docs/screenshots/recipes.png)
 
 ### Put files in order before numbering
 
