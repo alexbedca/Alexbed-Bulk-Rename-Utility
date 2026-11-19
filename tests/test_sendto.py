@@ -24,6 +24,7 @@ def test_default_folder_is_the_users_sendto(monkeypatch):
     assert sendto.sendto_dir() == Path(r"C:\Users\x\AppData\Roaming\Microsoft\Windows\SendTo")
 
 
+@pytest.mark.slow  # makes a real shortcut through PowerShell (~1.2 s); runs in the release check
 def test_install_points_at_this_app_and_remove_deletes_only_it(fake_sendto):
     other = fake_sendto / "Mail recipient.MAPIMail"
     fake_sendto.mkdir()
@@ -43,7 +44,7 @@ def test_install_points_at_this_app_and_remove_deletes_only_it(fake_sendto):
 
 
 def test_launch_command_for_the_portable_exe(monkeypatch, tmp_path):
-    exe = tmp_path / "AlexedBulkRename.exe"
+    exe = tmp_path / "AlexbedBulkRename.exe"
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     monkeypatch.setattr(sys, "executable", str(exe))
     target, args, workdir, icon = sendto.launch_command()

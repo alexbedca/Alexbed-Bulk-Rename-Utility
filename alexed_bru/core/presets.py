@@ -20,7 +20,7 @@ def dump(rules: Sequence[Rule], name: str = "") -> dict:
 
 def load_dict(data: dict) -> list[Rule]:
     if data.get("format") != FORMAT:
-        raise ValueError("Not an Alexed Bulk Rename Utility preset")
+        raise ValueError("Not an Alexbed Bulk Rename Utility preset")
     return [Rule.from_dict(r) for r in data.get("rules", [])]
 
 

@@ -1,7 +1,7 @@
 # Copyright (C) 2026 Alexander Bediako
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Alexed Bulk Rename Utility: a portable, transactional bulk file renamer."""
+"""Alexbed Bulk Rename Utility: a portable, transactional bulk file renamer."""
 
-APP_NAME = "Alexed Bulk Rename Utility"
-APP_SHORT = "Alexed BRU"
-APP_VERSION = "1.1.0"
+APP_NAME = "Alexbed Bulk Rename Utility"
+APP_SHORT = "Alexbed BRU"
+APP_VERSION = "1.1.1"

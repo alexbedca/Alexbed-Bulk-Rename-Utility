@@ -5,6 +5,7 @@ __pycache__/
 build/
 dist/
 *.spec
+AlexbedBRU_data/
 AlexedBRU_data/
 test_library/
 

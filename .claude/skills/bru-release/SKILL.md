@@ -1,11 +1,11 @@
 ---
 name: bru-release
-description: Release a new version of Alexed Bulk Rename Utility - version bump, tests, PyInstaller exe build, sha256, GitHub release and verification. Use when asked to release, ship, publish or tag a new Bulk Rename Utility version.
+description: Release a new version of Alexbed Bulk Rename Utility - version bump, tests, PyInstaller exe build, sha256, GitHub release and verification. Use when asked to release, ship, publish or tag a new Bulk Rename Utility version.
 ---
 
-# Releasing Alexed Bulk Rename Utility
+# Releasing Alexbed Bulk Rename Utility
 
-Repo: https://github.com/alexbedca/Alexed-Bulk-Rename-Utility (branch `main`). General Alexbed publishing conventions
+Repo: https://github.com/alexbedca/Alexbed-Bulk-Rename-Utility (branch `main`). General Alexbed publishing conventions
 are in the personal `alexbed-github-publish` skill; this file covers only what is specific to this app.
 **Confirm with Alexander before pushing, tagging or publishing the release.**
 
@@ -24,20 +24,20 @@ are in the personal `alexbed-github-publish` skill; this file covers only what i
 .venv\Scripts\python -m pytest -m slow    # 10,000-file rename/undo, a few minutes; run before a release
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
-`build.ps1` re-runs the tests and writes `dist\AlexedBulkRename.exe`. Then make the checksum file:
+`build.ps1` re-runs the tests and writes `dist\AlexbedBulkRename.exe`. Then make the checksum file:
 ```powershell
-$h = (Get-FileHash dist\AlexedBulkRename.exe -Algorithm SHA256).Hash.ToLower()
-[IO.File]::WriteAllText("$PWD\dist\AlexedBulkRename.exe.sha256", "$h  AlexedBulkRename.exe`n")
+$h = (Get-FileHash dist\AlexbedBulkRename.exe -Algorithm SHA256).Hash.ToLower()
+[IO.File]::WriteAllText("$PWD\dist\AlexbedBulkRename.exe.sha256", "$h  AlexbedBulkRename.exe`n")
 ```
 Use a plain `\n` line ending: `Set-Content` writes CRLF, and then `sha256sum -c` fails (1.1.0 had to re-upload it).
 Portable smoke test: copy the exe to `%TEMP%\bru-portable`, start it, rename a few files from `test_library\`
-copies, undo from History, and check that `AlexedBRU_data\` was created next to the exe (not in AppData).
+copies, undo from History, and check that `AlexbedBRU_data\` was created next to the exe (not in AppData).
 Report the startup time honestly (it was 4–6 s after commit c9f7cc5).
 
 ## 3. Screenshots and social card (every release)
 Screenshots live in `docs/screenshots/` (`main-window`, `regex-groups`, `regex-examples`, `regex-guide`,
 `regex-from-example`, `smart-tags`, `auto-number-and-edit`, `duplicates` .png). For 1.1.0 they were made by a
-script that drives the real `MainWindow` on screen over `test_library` (`ALEXED_BRU_DATA=test_library\.appdata`)
+script that drives the real `MainWindow` on screen over `test_library` (`ALEXBED_BRU_DATA=test_library\.appdata`)
 and saves `widget.grab()` at 1400×800; the duplicates/numbering demos are folders it creates inside
 `test_library`. Look at every image before committing. Then rebuild the card (it shows the version):
 `.venv\Scripts\python tools\make_social_preview.py` → `docs/social-preview.png`, and upload it in repo
@@ -50,11 +50,11 @@ Testing the built exe by clicking needs computer use, which Alexander may declin
 git add -A; git commit -F msg.txt     # write the message to a file first
 git push
 git tag vX.Y.Z; git push origin vX.Y.Z
-gh release create vX.Y.Z dist\AlexedBulkRename.exe dist\AlexedBulkRename.exe.sha256 `
-  -R alexbedca/Alexed-Bulk-Rename-Utility -t "Alexed Bulk Rename Utility X.Y.Z" -F notes.md
+gh release create vX.Y.Z dist\AlexbedBulkRename.exe dist\AlexbedBulkRename.exe.sha256 `
+  -R alexbedca/Alexbed-Bulk-Rename-Utility -t "Alexbed Bulk Rename Utility X.Y.Z" -F notes.md
 ```
 
 ## 5. Verify
-- `gh release view vX.Y.Z -R alexbedca/Alexed-Bulk-Rename-Utility` lists both assets and is marked Latest.
+- `gh release view vX.Y.Z -R alexbedca/Alexbed-Bulk-Rename-Utility` lists both assets and is marked Latest.
 - Download the exe from the release into a new empty folder, check its SHA-256 against the `.sha256`, start it once.
 - Tell Alexander the release URL, exe size, test counts (fast + slow) and anything not verified.

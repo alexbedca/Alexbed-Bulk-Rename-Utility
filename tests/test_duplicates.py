@@ -107,3 +107,32 @@ def test_recycle_refuses_network_paths(tmp_path, monkeypatch):
     assert dup.can_recycle(unc) is False
     assert dup.recycle([unc]) == [unc]
     assert called == []
+
+
+def test_undo_removes_empty_duplicates_folders_and_redo_recreates_them(tmp_path):
+    extra = write(tmp_path / "b.txt", b"same")
+    write(tmp_path / "a.txt", b"same")
+    sub = write(tmp_path / "sub" / "c.txt", b"same")
+    kept = write(tmp_path / "other" / dup.DUPLICATES_FOLDER / "mine.txt", b"user file")  # not ours
+    history = History(tmp_path / "data" / "history.json")
+    assert dup.move_to_folder([extra, sub], history).ok
+    batch = history.batches[-1]
+
+    assert history.rollback(batch).ok
+    assert extra.exists() and sub.exists()
+    assert not (tmp_path / dup.DUPLICATES_FOLDER).exists()            # empty: removed
+    assert not (tmp_path / "sub" / dup.DUPLICATES_FOLDER).exists()
+    assert kept.exists()                                              # someone else's: untouched
+
+    assert history.reapply(batch).ok                                  # redo recreates them
+    assert (tmp_path / dup.DUPLICATES_FOLDER / "b.txt").exists()
+    assert (tmp_path / "sub" / dup.DUPLICATES_FOLDER / "c.txt").exists()
+
+
+def test_undo_keeps_a_duplicates_folder_that_still_has_files(tmp_path):
+    extra = write(tmp_path / "b.txt", b"same")
+    history = History(tmp_path / "data" / "history.json")
+    assert dup.move_to_folder([extra], history).ok
+    write(tmp_path / dup.DUPLICATES_FOLDER / "added later.txt", b"x")
+    assert history.rollback(history.batches[-1]).ok
+    assert (tmp_path / dup.DUPLICATES_FOLDER / "added later.txt").exists()

@@ -20,14 +20,15 @@ from pathlib import Path
 
 from alexed_bru.paths import app_root
 
-SHORTCUT_NAME = "Alexed Bulk Rename.lnk"
+SHORTCUT_NAME = "Alexbed Bulk Rename.lnk"
+OLD_SHORTCUT_NAME = "Alexed Bulk Rename.lnk"  # made by 1.1.0, when the app was misnamed
 _NO_WINDOW = 0x08000000  # CREATE_NO_WINDOW: no console flash from a GUI app
 
 _CREATE = (
     "$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:ABRU_LNK);"
     "$s.TargetPath = $env:ABRU_TARGET; $s.Arguments = $env:ABRU_ARGS;"
     "$s.WorkingDirectory = $env:ABRU_DIR; $s.IconLocation = $env:ABRU_ICON;"
-    "$s.Description = 'Rename the selected files with Alexed Bulk Rename Utility'; $s.Save()"
+    "$s.Description = 'Rename the selected files with Alexbed Bulk Rename Utility'; $s.Save()"
 )
 _READ = ("$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:ABRU_LNK);"
          "Write-Output $s.TargetPath; Write-Output $s.Arguments")
@@ -77,15 +78,24 @@ def install(folder: Path | None = None) -> Path:
                                  "ABRU_DIR": workdir, "ABRU_ICON": icon})
     if proc.returncode != 0 or not lnk.exists():
         raise OSError((proc.stderr or proc.stdout or "PowerShell could not create the shortcut").strip())
+    _remove_old(folder)  # don't leave a second, old-named entry in the menu
     return lnk
 
 
+def _remove_old(folder: Path | None) -> None:
+    try:
+        ((folder or sendto_dir()) / OLD_SHORTCUT_NAME).unlink()
+    except FileNotFoundError:
+        pass
+
+
 def remove(folder: Path | None = None) -> None:
-    """Delete only our own shortcut; nothing else in the folder is touched."""
+    """Delete only our own shortcut (and the old-named one); nothing else in the folder is touched."""
     try:
         shortcut_path(folder).unlink()
     except FileNotFoundError:
         pass
+    _remove_old(folder)
 
 
 def read_shortcut(lnk: Path) -> tuple[str, str]:

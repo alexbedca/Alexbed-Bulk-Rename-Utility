@@ -18,7 +18,7 @@ def main(argv: list[str] | None = None) -> int:
     if sys.platform == "win32":
         try:  # own taskbar icon/group instead of python.exe's
             import ctypes
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Alexed.BulkRenameUtility")
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Alexbed.BulkRenameUtility")
         except Exception:  # noqa: BLE001
             pass
     app = QApplication(argv)

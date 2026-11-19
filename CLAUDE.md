@@ -1,4 +1,4 @@
-# Alexed Bulk Rename Utility: project notes for Claude
+# Alexbed Bulk Rename Utility: project notes for Claude
 
 ## What this project is
 A free, portable Windows 10/11 bulk file renamer (single `.exe`, no installer, no registry): drop files/folders,
@@ -6,13 +6,17 @@ stack rules (Find & Replace, RegEx, prefix/suffix, case, counters/renumbering, t
 preview, then rename as one transaction that rolls back on any failure. Any batch can be undone later from History.
 Reads audio (mutagen), video (MP4/MOV atoms), EXIF (Pillow) and PDF/Office metadata for tag-based names.
 
-- **Status:** v1.1.0 released 2026-11-18 (v1.0.0 on 2026-11-06). Public repo
-  https://github.com/alexbedca/Alexed-Bulk-Rename-Utility (GPL-3.0-or-later). Release assets: `AlexedBulkRename.exe`,
-  `AlexedBulkRename.exe.sha256`, `LICENSE`, `THIRD-PARTY-NOTICES.txt`.
+- **Name:** the brand is **Alexbed** (Alexbed Bulk Rename Utility). 1.0.0 and 1.1.0 shipped as the misspelt "Alexed";
+  1.1.1 renamed everything users see. Still "alexed" on purpose: the Python package `alexed_bru`, the preset format id
+  `alexed-bru-preset`, this local folder name, and compatibility code for the old data folder `AlexedBRU_data`,
+  env var `ALEXED_BRU_DATA` and Send To shortcut "Alexed Bulk Rename.lnk" (`paths.py`, `core/sendto.py`).
+- **Status:** v1.1.1 released 2026-11-18 (1.1.0 earlier the same day, 1.0.0 on 2026-11-06). Public repo
+  https://github.com/alexbedca/Alexbed-Bulk-Rename-Utility (GPL-3.0-or-later). Release assets: `AlexbedBulkRename.exe`,
+  `AlexbedBulkRename.exe.sha256`, `LICENSE`, `THIRD-PARTY-NOTICES.txt`.
   1.1.0 added: Find duplicates, RegEx from example, plain-English rule cards, hand-edited names, auto-number
   duplicate names, Send To shortcut.
 - **Screenshots and social card:** regenerate every release. README screenshots come from the real window over
-  `test_library` (script pattern: drive `MainWindow` with `ALEXED_BRU_DATA=test_library\.appdata`, `widget.grab()`).
+  `test_library` (script pattern: drive `MainWindow` with `ALEXBED_BRU_DATA=test_library\.appdata`, `widget.grab()`).
   Card: `.venv\Scripts\python tools\make_social_preview.py` → `docs/social-preview.png` (shows the version), then
   upload it in repo Settings → Social preview via Claude in Chrome.
 - **No CI** (no `.github/` folder): tests only run locally.
@@ -26,7 +30,7 @@ Reads audio (mutagen), video (MP4/MOV atoms), EXIF (Pillow) and PDF/Office metad
 Python 3.11+ (venv in `.venv`), PySide6-Essentials (Qt 6), mutagen, pypdf, Pillow; PyInstaller `--onefile` build.
 ```
 alexed_bru/__init__.py    APP_NAME / APP_VERSION (single place for the version)
-alexed_bru/paths.py       portable data dir: AlexedBRU_data\ next to the exe (override: ALEXED_BRU_DATA)
+alexed_bru/paths.py       portable data dir: AlexbedBRU_data\ next to the exe (override: ALEXBED_BRU_DATA)
 alexed_bru/core/          engine, pipeline (pure), validation (+ auto-number), transaction (two-phase + rollback),
                           history, presets, tags, duplicates (content finder), sendto (Explorer shortcut)
 alexed_bru/skills/        rule base + registry (rules.py, plain-English summary() per rule), regex_infer
@@ -36,7 +40,7 @@ alexed_bru/ui/            main_window, preview_model (virtualised table + highli
 tests/                    pytest: engine, rules, metadata, media, ui, large (10k files, marked slow)
 assets/branding, assets/ui  logo/icon, UI icons
 test_library/             sample messy files for manual testing (git-ignored)
-build.ps1                 venv + tests + PyInstaller -> dist\AlexedBulkRename.exe
+build.ps1                 venv + tests + PyInstaller -> dist\AlexbedBulkRename.exe
 ```
 
 ## Tools for this project
@@ -46,14 +50,14 @@ build.ps1                 venv + tests + PyInstaller -> dist\AlexedBulkRename.ex
 - Tests: `.venv\Scripts\python -m pytest` (~14 s; `-m "not slow"` is the default via `pytest.ini`). Keep it under
   15 s: most time is ~40 UI tests at ~0.4 s each for the window fixture; mark anything long `slow`.
   Slow 10,000-file rename/undo runs: `.venv\Scripts\python -m pytest -m slow` (a few minutes; ~4 s each for rename and undo).
-- Build: `powershell -ExecutionPolicy Bypass -File build.ps1` → `dist\AlexedBulkRename.exe` (runs tests first, stops if they fail).
+- Build: `powershell -ExecutionPolicy Bypass -File build.ps1` → `dist\AlexbedBulkRename.exe` (runs tests first, stops if they fail).
 - Lint: `pyflakes` is in requirements-dev.
 
 **Project skills** (in `.claude/skills/`)
 - `bru-release`: version bump → tests → build → sha256 → GitHub release → verification.
 
 **Account tools this project uses** (full list in `~/.claude/CLAUDE.md`)
-- `git push` via Git Credential Manager; `gh release create/upload` for releases (repo `alexbedca/Alexed-Bulk-Rename-Utility`).
+- `git push` via Git Credential Manager; `gh release create/upload` for releases (repo `alexbedca/Alexbed-Bulk-Rename-Utility`).
 - Personal skill `alexbed-github-publish` for README/licence/screenshot/social-preview conventions.
 - Claude in Chrome for the GitHub social-preview upload (web-only). The card is `docs/social-preview.png`,
   made by `tools/make_social_preview.py`.
@@ -72,6 +76,6 @@ build.ps1                 venv + tests + PyInstaller -> dist\AlexedBulkRename.ex
 - Tag values are sanitised (`AC/DC` → `AC-DC`), never a path separator.
 - Startup was cut from 15–18 s to 4–6 s on PCs with many fonts (commit c9f7cc5); keep an eye on startup cost when
   adding UI.
-- `dist/`, `*.spec`, `AlexedBRU_data/`, `test_library/` and the release exe are git-ignored.
+- `dist/`, `*.spec`, `AlexbedBRU_data/`, `test_library/` and the release exe are git-ignored.
 - `tests/test_stress_and_locks.py` runs the real engine: a file held open by another process must roll back the
   whole batch (small and 100-file parallel/chained batches; Windows only). Its 10k test is marked slow.

@@ -13,6 +13,9 @@ from pathlib import Path
 from alexed_bru.core.transaction import RenameOp, TransactionResult, execute
 
 MAX_BATCHES = 500
+# Folder that "Find duplicates" moves extra copies into (core/duplicates.py). Undo removes it again
+# when that leaves it empty; redo recreates it. Defined here so duplicates.py can import it.
+SET_ASIDE_FOLDER = "_Duplicates"
 
 
 @dataclass
@@ -77,11 +80,35 @@ class History:
         if result.ok:
             batch.undone = True
             self.save()
+            _remove_empty(_set_aside_folders(batch))
         return result
 
     def reapply(self, batch: Batch) -> TransactionResult:
+        created = []
+        for folder in _set_aside_folders(batch):  # undo removed them; the moves need them back
+            if not folder.exists():
+                try:
+                    folder.mkdir()
+                except OSError:
+                    continue  # the transaction will fail cleanly on the missing folder
+                created.append(folder)
         result = execute(batch.rename_ops)
         if result.ok:
             batch.undone = False
             self.save()
+        else:
+            _remove_empty(created)
         return result
+
+
+def _set_aside_folders(batch: Batch) -> list[Path]:
+    """The _Duplicates folders a batch moved files into (only that name; never anything else)."""
+    return sorted({op.dst.parent for op in batch.rename_ops if op.dst.parent.name == SET_ASIDE_FOLDER})
+
+
+def _remove_empty(folders) -> None:
+    for folder in folders:
+        try:
+            folder.rmdir()  # only succeeds when the folder is empty
+        except OSError:
+            pass

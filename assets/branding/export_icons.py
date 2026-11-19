@@ -1,6 +1,6 @@
 # Copyright (C) 2026 Alexander Bediako
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Rasterise the Alexed Bulk Rename Utility logo mark to PNG + Windows .ico.
+"""Rasterise the Alexbed Bulk Rename Utility logo mark to PNG + Windows .ico.
 
 Pure Pillow (no Cairo needed). Mirrors the geometry of logo-mark.svg on a
 512-unit grid, renders supersampled at 2048px, then downsamples.

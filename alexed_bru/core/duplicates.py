@@ -28,12 +28,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Iterable, Sequence
 
-from alexed_bru.core.history import History
+from alexed_bru.core.history import SET_ASIDE_FOLDER, History
 from alexed_bru.core.transaction import RenameOp, TransactionResult, execute
 
 HEAD_BYTES = 64 * 1024
 CHUNK = 1024 * 1024
-DUPLICATES_FOLDER = "_Duplicates"
+DUPLICATES_FOLDER = SET_ASIDE_FOLDER
 
 # Names that look like a copy: "x (1)", "x - Copy", "x copy 2", "Copy of x", "x_copy".
 # Only small numbers at the very end, so "Live (1999)" is not mistaken for a copy.

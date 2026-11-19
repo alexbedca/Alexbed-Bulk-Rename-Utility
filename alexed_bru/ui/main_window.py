@@ -161,7 +161,7 @@ class MainWindow(QMainWindow):
         logo.setPixmap(pix.scaled(38, 38, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         titles = QVBoxLayout()
         titles.setSpacing(0)
-        t1 = QLabel(f"<span style='color:{C.CYAN}'>Alex</span><span style='color:{C.VIOLET}'>ed</span>")
+        t1 = QLabel(f"<span style='color:{C.CYAN}'>Alex</span><span style='color:{C.VIOLET}'>bed</span>")
         t1.setObjectName("AppTitle")
         t2 = QLabel("BULK RENAME UTILITY")
         t2.setObjectName("AppSubtitle")
@@ -220,7 +220,7 @@ class MainWindow(QMainWindow):
         self.more_menu = QMenu(more)
         self.sendto_action = self.more_menu.addAction("Add to Windows “Send To” menu")
         self.sendto_action.setCheckable(True)
-        self.sendto_action.setToolTip("Right-click files in Explorer → Send to → Alexed Bulk Rename.\n"
+        self.sendto_action.setToolTip("Right-click files in Explorer → Send to → Alexbed Bulk Rename.\n"
                                       "Adds one shortcut to your own Send To folder; no admin rights.")
         self.sendto_action.triggered.connect(self.toggle_sendto)
         self.more_menu.addAction("Open data folder", lambda: QDesktopServices.openUrl(
@@ -781,7 +781,7 @@ class MainWindow(QMainWindow):
             if on:
                 sendto.install()
                 self.status_text.setText("Added to Send To: right-click files in Explorer → Send to → "
-                                         "Alexed Bulk Rename. If you move the app, tick it again.")
+                                         "Alexbed Bulk Rename. If you move the app, tick it again.")
             else:
                 sendto.remove()
                 self.status_text.setText("Removed from the Send To menu.")

@@ -87,3 +87,21 @@ def test_edit_new_name_in_the_preview_table(app, win, tmp_path):
     assert model.items[0].manual is None                          # used up by the rename
     assert win.rollback_batch(win.history.batches[-1], redo=False)
     assert (lib / "01 one.txt").exists() and (lib / "02 two.txt").exists()
+
+
+def test_open_editor_survives_a_preview_refresh(app, win, tmp_path):
+    from PySide6.QtWidgets import QAbstractItemView
+    from alexed_bru.ui.preview_model import COL_NEW
+    files(tmp_path / "lib", "a.txt", "b.txt")
+    win.add_paths([tmp_path / "lib"])
+    assert pump(app, lambda: len(win.model.items) == 2)
+    win.set_rules([ReplaceRule(find="a", replace="x")])
+    assert pump(app, lambda: idle(win))
+    index = win.proxy.mapFromSource(win.model.index(1, COL_NEW))
+    win.table.setCurrentIndex(index)
+    win.table.edit(index)
+    pump(app, timeout=0.2)
+    assert win.table.state() == QAbstractItemView.EditingState
+    win.set_rules([ReplaceRule(find="a", replace="y")])     # a preview result lands while editing
+    assert pump(app, lambda: idle(win) and win.model.proposals[0].new_name == "y.txt")
+    assert win.table.state() == QAbstractItemView.EditingState   # the user's typing is not thrown away

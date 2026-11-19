@@ -1,11 +1,14 @@
-# Alexed Bulk Rename Utility
+# Alexbed Bulk Rename Utility
 
 ![logo](assets/branding/logo-horizontal.svg)
 
 A portable, transactional bulk file renamer for big music libraries, photo and video folders and deeply nested document archives.
 It's a single `.exe` for Windows 10/11, with no installer and no registry footprint.
 
-**Version:** 1.1.0 &nbsp;|&nbsp; **Author:** Alexander Bediako &nbsp;|&nbsp; **Licence:** [GPL-3.0-or-later](LICENSE)
+**Version:** 1.1.1 &nbsp;|&nbsp; **Author:** Alexander Bediako &nbsp;|&nbsp; **Licence:** [GPL-3.0-or-later](LICENSE)
+
+> Versions 1.0.0 and 1.1.0 were published under the misspelt name *Alexed*. The app is **Alexbed**; old links
+> redirect here, and an existing `AlexedBRU_data` folder keeps being used, so your history and settings stay.
 
 ![Main window: rules on the left, live preview on the right](docs/screenshots/main-window.png)
 
@@ -21,14 +24,14 @@ It's a single `.exe` for Windows 10/11, with no installer and no registry footpr
 ## How-to video
 
 New to the app? Watch the 3-minute narrated walkthrough:
-**[Alexed-Bulk-Rename-Utility-how-to.mp4](https://github.com/alexbedca/Alexed-Bulk-Rename-Utility/releases/download/v1.1.0/Alexed-Bulk-Rename-Utility-how-to.mp4)**
+**[Alexbed-Bulk-Rename-Utility-how-to.mp4](https://github.com/alexbedca/Alexbed-Bulk-Rename-Utility/releases/latest/download/Alexbed-Bulk-Rename-Utility-how-to.mp4)**
 (1080p, 8 MB, with subtitles). It covers adding files and rules, the preview, RegEx from an example,
 hand-edited names, auto-numbering, rename and undo, finding duplicates, tag-based names and the Send To menu.
 It's built from real screenshots by `tools\make_tutorial_video.py`.
 
 ## Download
 
-Get `AlexedBulkRename.exe` from the [latest release](../../releases/latest) and run it. No install is needed.
+Get `AlexbedBulkRename.exe` from the [latest release](../../releases/latest) and run it. No install is needed.
 Windows SmartScreen may warn about an unknown publisher, because the exe isn't code-signed. Choose *More info → Run anyway*.
 
 ## Run from source
@@ -39,14 +42,14 @@ python -m venv .venv
 .venv\Scripts\python run.py            # or: python -m alexed_bru
 ```
 
-To build the portable executable (runs the tests first), run `build.ps1`. The output is `dist\AlexedBulkRename.exe`:
+To build the portable executable (runs the tests first), run `build.ps1`. The output is `dist\AlexbedBulkRename.exe`:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
 
-History, presets and settings are stored in `AlexedBRU_data\` next to the exe. Copy both together to take your setup to another PC.
-Set `ALEXED_BRU_DATA` to store them somewhere else.
+History, presets and settings are stored in `AlexbedBRU_data\` next to the exe (or in an existing `AlexedBRU_data\` from 1.1.0 or older). Copy both together to take your setup to another PC.
+Set `ALEXBED_BRU_DATA` to store them somewhere else.
 
 ## Using it
 
@@ -80,7 +83,7 @@ Numbered rows show in amber. This setting is remembered.
 ### Send To menu (optional)
 
 In the **⋯** menu (top right), tick **Add to Windows "Send To" menu**. Then you can right-click files in Explorer →
-**Send to → Alexed Bulk Rename** to open them in the app. This adds one shortcut to your own
+**Send to → Alexbed Bulk Rename** to open them in the app. This adds one shortcut to your own
 `%APPDATA%\Microsoft\Windows\SendTo` folder, needs no admin rights, and unticking removes it.
 If you move the exe, tick it again. If the app is already open, Send To opens a second window.
 
@@ -198,7 +201,7 @@ Tests: `.venv\Scripts\python -m pytest` (about 14s; slow tests are skipped by de
 
 ## Licence
 
-Alexed Bulk Rename Utility is free software, released under the **GNU General Public License v3.0 or later**.
+Alexbed Bulk Rename Utility is free software, released under the **GNU General Public License v3.0 or later**.
 You may use, study, share and change it. See [LICENSE](LICENSE).
 
 It's built with free software such as Qt/PySide6, mutagen, pypdf and Pillow.

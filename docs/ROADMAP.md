@@ -9,7 +9,7 @@ This is a plan, not a promise. Each phase can ship as its own minor release. Bef
   of files, real drives or the network is marked `slow`. New UI tests should reuse the window fixture and stay short.
 - **Exe stays compact** (about 57 MB at v1.1.0, PyInstaller one-file). New dependencies need a size check
   (`build.ps1` prints the size) and must be pure Python or already bundled. No system installs, no registry.
-- **Portable.** Settings and history stay in `AlexedBRU_data\` next to the exe; anything written elsewhere
+- **Portable.** Settings and history stay in `AlexbedBRU_data\` next to the exe; anything written elsewhere
   (like the Send To shortcut) is opt-in and removable.
 - **Plain language.** Every new option gets a plain-English rule card summary, a tooltip and a README section.
 
@@ -111,8 +111,8 @@ Today these formats only get system tags (dates, size).
 
 ### ☐ Scoop and winget manifests
 Let people install and update the portable exe with a package manager.
-- **Scoop:** a manifest (`alexed-bulk-rename.json`) for a bucket, with `"bin"`, `"shortcuts"`, `"persist":
-  "AlexedBRU_data"` (so history and settings survive updates), `checkver` on GitHub releases and `autoupdate`
+- **Scoop:** a manifest (`alexbed-bulk-rename.json`) for a bucket, with `"bin"`, `"shortcuts"`, `"persist":
+  "AlexbedBRU_data"` (so history and settings survive updates), `checkver` on GitHub releases and `autoupdate`
   using the `.sha256` file.
 - **winget:** `InstallerType: portable` manifests for `microsoft/winget-pkgs`; portable installs live in a
   winget folder, so document that data is kept next to the exe there.
@@ -125,8 +125,8 @@ Let people install and update the portable exe with a package manager.
 ## Already done
 - ☑ v1.1.0 (2026-11-18): Find duplicates, RegEx from example, plain-English rule cards, hand-edited names,
   auto-number duplicate names, Send To menu, how-to video.
-- ☑ Fixed after 1.1.0 (ships in 1.1.1): "&" shown as "_" in menus.
-
-## Small follow-ups (next patch)
-- Remove empty `_Duplicates` folders after a duplicate move is undone.
-- The name editor sometimes doesn't open on double-click while a preview is refreshing.
+- ☑ v1.1.1 (2026-11-18): renamed from the misspelt "Alexed" to **Alexbed** (exe, title, repo, data folder; an
+  existing `AlexedBRU_data`, the old `ALEXED_BRU_DATA` setting and the old Send To shortcut are still handled);
+  "&" shown as "_" in menus; undo of a duplicates move removes the emptied `_Duplicates` folders (redo recreates
+  them). A one-off "double-click didn't open the name editor" could not be reproduced; a test now checks that an
+  open editor survives preview refreshes.

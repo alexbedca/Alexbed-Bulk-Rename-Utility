@@ -1,7 +1,7 @@
-ALEXED BULK RENAME UTILITY - THIRD-PARTY NOTICES
+ALEXBED BULK RENAME UTILITY - THIRD-PARTY NOTICES
 ================================================
 
-Alexed Bulk Rename Utility is Copyright (C) 2026 Alexander Bediako and is
+Alexbed Bulk Rename Utility is Copyright (C) 2026 Alexander Bediako and is
 released under the GNU General Public License, version 3 or later (see the
 file LICENSE).
 
@@ -29,4 +29,4 @@ SOURCE CODE
 -----------
 The complete source code of every release, including the build script
 (build.ps1), is available at
-https://github.com/alexbedca/Alexed-Bulk-Rename-Utility (see the release tag).
+https://github.com/alexbedca/Alexbed-Bulk-Rename-Utility (see the release tag).

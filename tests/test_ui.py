@@ -27,7 +27,7 @@ def app():
 
 @pytest.fixture
 def win(app, tmp_path, monkeypatch):
-    monkeypatch.setenv("ALEXED_BRU_DATA", str(tmp_path / "data"))
+    monkeypatch.setenv("ALEXBED_BRU_DATA", str(tmp_path / "data"))
     paths.data_dir.cache_clear()
     import alexed_bru.ui.main_window as mw
     monkeypatch.setattr(mw.QMessageBox, "question", staticmethod(lambda *a, **k: QMessageBox.Yes))

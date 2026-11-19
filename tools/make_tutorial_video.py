@@ -1,6 +1,6 @@
 # Copyright (C) 2026 Alexander Bediako
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Build the narrated how-to video: video/Alexed-Bulk-Rename-Utility-how-to.mp4.
+"""Build the narrated how-to video: video/Alexbed-Bulk-Rename-Utility-how-to.mp4.
 
     .venv\\Scripts\\python tools\\make_tutorial_video.py
 
@@ -34,11 +34,11 @@ VOICE = os.environ.get("VIDEO_VOICE", "Mark")
 SLIDES = [
     dict(kind="title", title="How to use it",
          say="Welcome! This short video shows how to rename hundreds of files safely with "
-             "Alexed Bulk Rename Utility. It's free, it's portable, and nothing changes on your disk "
+             "Alexbed Bulk Rename Utility. It's free, it's portable, and nothing changes on your disk "
              "until you press Rename."),
     dict(title="Start the app", image="cap-empty.png", boxes=[(12, 8, 1392, 52)],
-         caption="Download AlexedBulkRename.exe from GitHub and run it. No install needed.",
-         say="Download Alexed Bulk Rename dot E X E from the GitHub releases page, and run it. There's "
+         caption="Download AlexbedBulkRename.exe from GitHub and run it. No install needed.",
+         say="Download Alexbed Bulk Rename dot E X E from the GitHub releases page, and run it. There's "
              "nothing to install. If Windows SmartScreen appears, choose More info, then Run anyway."),
     dict(title="Add your files", image="cap-files.png", boxes=[(240, 8, 600, 52)],
          caption="Drag files or folders onto the window, or use + Files and + Folder.",
@@ -90,7 +90,7 @@ SLIDES = [
          say="Optional: in the three dots menu, add the app to Windows' Send To menu. Then you can "
              "right-click files in Explorer, and send them straight to the app."),
     dict(kind="end", title="Happy renaming!",
-         say="That's it! Download Alexed Bulk Rename Utility free from GitHub. Happy renaming!"),
+         say="That's it! Download Alexbed Bulk Rename Utility free from GitHub. Happy renaming!"),
 ]
 
 BG, PANEL, CYAN, VIOLET, INDIGO = (11, 13, 26), (17, 20, 42), (34, 211, 238), (192, 132, 252), (99, 102, 241)
@@ -105,7 +105,7 @@ def capture() -> dict:
     shutil.copytree(lib / "Messy names", demo)
     data = BUILD / "appdata"
     shutil.rmtree(data, ignore_errors=True)
-    os.environ["ALEXED_BRU_DATA"] = str(data)
+    os.environ["ALEXBED_BRU_DATA"] = str(data)
 
     from PySide6.QtCore import QEvent, QPoint
     from PySide6.QtWidgets import QApplication, QMessageBox
@@ -223,11 +223,11 @@ def title_slide(slide, version) -> "Image":
     d = ImageDraw.Draw(img)
     big = font(110, True)
     d.text((160, 480), "Alex", font=big, fill=CYAN)
-    d.text((160 + d.textlength("Alex", font=big), 480), "ed", font=big, fill=VIOLET)
+    d.text((160 + d.textlength("Alex", font=big), 480), "bed", font=big, fill=VIOLET)
     d.text((166, 610), "Bulk Rename Utility", font=font(64, True), fill=TEXT)
     d.text((168, 710), slide["title"], font=font(48), fill=DIM)
     footer = (f"Version {version}  ·  Free  ·  Portable  ·  Open source  ·  Windows"
-              if slide["kind"] == "title" else "github.com/alexbedca/Alexed-Bulk-Rename-Utility")
+              if slide["kind"] == "title" else "github.com/alexbedca/Alexbed-Bulk-Rename-Utility")
     d.text((168, 860), footer, font=font(34), fill=FAINT if slide["kind"] == "title" else CYAN)
     if slide["kind"] == "title":  # the app itself on the right
         from PIL import ImageFilter
@@ -348,14 +348,14 @@ def main() -> None:
 
     listing = BUILD / "segments.txt"
     listing.write_text("".join(f"file '{s.as_posix()}'\n" for s in segments))
-    srt = OUT / "Alexed-Bulk-Rename-Utility-how-to.srt"
+    srt = OUT / "Alexbed-Bulk-Rename-Utility-how-to.srt"
     srt.write_text("\n".join(f"{k + 1}\n{srt_time(a)} --> {srt_time(b)}\n{text}\n"
                              for k, (a, b, text) in enumerate(cues)), encoding="utf-8")
-    final = OUT / "Alexed-Bulk-Rename-Utility-how-to.mp4"
+    final = OUT / "Alexbed-Bulk-Rename-Utility-how-to.mp4"
     run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(listing), "-i", str(srt),
          "-map", "0:v", "-map", "0:a", "-map", "1:s", "-c:v", "copy", "-c:s", "mov_text",
          "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000", "-c:a", "aac", "-b:a", "160k",  # YouTube-level loudness
-         "-metadata:s:s:0", "language=eng", "-metadata", f"title=Alexed Bulk Rename Utility {APP_VERSION}: how to use it",
+         "-metadata:s:s:0", "language=eng", "-metadata", f"title=Alexbed Bulk Rename Utility {APP_VERSION}: how to use it",
          "-movflags", "+faststart", str(final)])
     print(f"done: {final} ({duration(final):.1f}s, {final.stat().st_size / 1e6:.1f} MB)")
 
