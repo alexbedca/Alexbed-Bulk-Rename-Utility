@@ -94,12 +94,12 @@ SLIDES = [
          caption="Flatten moves every file out of the subfolders into one folder.",
          say="Got music spread over artist and album folders? Click Flatten and choose the folder. The "
              "preview shows where every file goes. Files with the same name get a number or the folder name, "
-             "and the empty subfolders are removed. Like everything else, you can undo it from History, and "
-             "the files can go straight into the rename list."),
+             "and the empty subfolders are removed. Like everything else, you can undo it from History: every "
+             "file and folder comes back exactly as it was. The files can also go straight into the rename list."),
     dict(title="Names from music and photo tags", image="smart-tags.png", boxes=[(26, 470, 378, 525)],
          caption="Templates like <track:2>. <artist> - <title> use the files' own tags.",
-         say="Music, photos, videos and documents carry tags. A template such as track, artist, title "
-             "builds tidy names from them automatically."),
+         say="Music, photos, videos and documents carry tags, including MKV, WebM and AVI videos. A "
+             "template such as track, artist, title builds tidy names from them automatically."),
     dict(title="Spreadsheet and Send To", image="cap-more.png", boxes=["menu"],
          caption="••• menu: export and import name lists, or add the app to Explorer's Send To.",
          say="In the three dots menu, you can export the list to a spreadsheet, type new names there, and "
