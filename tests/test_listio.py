@@ -96,3 +96,13 @@ def test_window_import_and_reset(app, win, tmp_path):
     assert win.model.proposals[0].manual
     win.reset_all_typed()
     assert pump(app, lambda: idle(win) and win.model.proposals[0].new_name == "one.txt")
+
+
+def test_rows_not_edited_in_the_sheet_stay_with_the_rules(tmp_path):
+    items = files(tmp_path / "M", "a.mp3", "b.mp3", "c.mp3")
+    csv_file = tmp_path / "in.csv"
+    # a: rule-made name left as exported; b: edited by the user; c: typed earlier (manual)
+    csv_file.write_text("Original name,New name\na.mp3,01 a.mp3\nb.mp3,My edit.mp3\nc.mp3,03 c.mp3\n",
+                        encoding="utf-8")
+    result = listio.import_list(csv_file, items, current=["01 a.mp3", "02 b.mp3", None])
+    assert result.names == {1: "My edit.mp3", 2: "03 c.mp3"} and result.unchanged == 1

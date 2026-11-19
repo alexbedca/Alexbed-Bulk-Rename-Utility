@@ -75,14 +75,26 @@ def _read_text(path: Path) -> str:
     return raw.decode("utf-8", errors="replace")
 
 
-def import_list(path: Path, items: Sequence[FileItem]) -> ImportResult:
-    """Match an edited CSV/TXT back to the listed files (see module docs)."""
+def import_list(path: Path, items: Sequence[FileItem],
+                current: Sequence[str] | None = None) -> ImportResult:
+    """Match an edited CSV/TXT back to the listed files (see module docs).
+
+    `current`: the names the app proposes now. A row whose name equals it wasn't edited in
+    the sheet, so it is left to the rules (changing a rule later still updates it).
+    """
     text = _read_text(path)
+    result = _import_csv(text, items) if _is_csv(text) else _import_txt(text, items)
+    if current is not None:
+        for index in [i for i, name in result.names.items() if name == current[i]]:
+            del result.names[index]
+            result.unchanged += 1
+    return result
+
+
+def _is_csv(text: str) -> bool:
     first = text.lstrip().splitlines()[0] if text.strip() else ""
     head = first.lower()
-    if "original name" in head and "new name" in head:  # our CSV header (any delimiter)
-        return _import_csv(text, items)
-    return _import_txt(text, items)
+    return "original name" in head and "new name" in head  # our CSV header (any delimiter)
 
 
 def _import_csv(text: str, items: Sequence[FileItem]) -> ImportResult:

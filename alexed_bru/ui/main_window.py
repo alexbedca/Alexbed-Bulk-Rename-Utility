@@ -112,6 +112,8 @@ class MainWindow(QMainWindow):
         self.model.itemsChanged.connect(self._on_items_changed)
         self.model.includeChanged.connect(self.schedule_preview)
         self.model.manualChanged.connect(self.schedule_preview)
+        # The view changes the selection after a drop finishes, so select the moved rows just after.
+        self.model.rowsDropped.connect(lambda rows: QTimer.singleShot(0, lambda: self._select_rows(rows)))
         self.setAcceptDrops(True)
         self._restore_session()
 
@@ -609,13 +611,15 @@ class MainWindow(QMainWindow):
                 return
             path = Path(chosen)
         try:
-            result = listio.import_list(Path(path), self.model.items)
+            current = [p.new_name if not i.manual else None for i, p in zip(self.model.items, self.model.proposals)]
+            result = listio.import_list(Path(path), self.model.items, current)
         except Exception as exc:  # noqa: BLE001 (a broken or foreign file must not crash the app)
             QMessageBox.warning(self, APP_NAME, f"Could not read the list.\n\n{exc}")
             return
         self.model.set_manual(result.names)
-        message = (f"Imported {len(result.names):,} new name(s) as typed names (pencil). "
-                   "Check the preview, then press Rename files.")
+        message = (f"Imported {len(result.names):,} edited name(s) as typed names (pencil); "
+                   f"{result.unchanged:,} unchanged row(s) stay with the rules. Check the preview, then "
+                   "press Rename files.")
         if result.problems:
             shown = "\n".join(result.problems[:15]) + ("\n…" if len(result.problems) > 15 else "")
             QMessageBox.warning(self, APP_NAME, f"{message}\n\nNot used ({len(result.problems):,}):\n{shown}")
@@ -943,15 +947,20 @@ class MainWindow(QMainWindow):
         rows = self._selected_rows()
         if not rows:
             return
-        new_rows = self.model.move_rows(rows, where)
+        self._select_rows(self.model.move_rows(rows, where))
+
+    def _select_rows(self, rows: list[int]) -> None:
+        """Select (and show) rows after they were moved, so the highlight follows them."""
         self.table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
         sel = self.table.selectionModel()
         sel.clearSelection()
-        for r in new_rows:
+        for r in rows:
             index = self.proxy.mapFromSource(self.model.index(r, 0))
             sel.select(index, sel.SelectionFlag.Select | sel.SelectionFlag.Rows)
-        if new_rows:
-            self.table.scrollTo(self.proxy.mapFromSource(self.model.index(new_rows[0], 0)))
+        if rows:
+            first = self.proxy.mapFromSource(self.model.index(rows[0], 0))
+            sel.setCurrentIndex(first, sel.SelectionFlag.NoUpdate)
+            self.table.scrollTo(first)
 
     # ======================================================================
     # Apply / history

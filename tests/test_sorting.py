@@ -92,3 +92,16 @@ def test_files_dropped_from_explorer_onto_the_table_are_still_added(app, win, tm
     drop = QDropEvent(pos, Qt.CopyAction, mime, Qt.LeftButton, Qt.NoModifier)
     QApplication.sendEvent(viewport, drop)
     assert pump(app, lambda: [i.name for i in win.model.items] == ["dropped.txt"])
+
+
+def test_selection_follows_dragged_rows(app, win, tmp_path):
+    lib = tmp_path / "lib"
+    lib.mkdir()
+    for n in ("a.txt", "b.txt", "c.txt"):
+        (lib / n).write_text(n)
+    win.add_paths([lib])
+    assert pump(app, lambda: len(win.model.items) == 3)
+    model = win.model
+    model.dropMimeData(model.mimeData([model.index(2, 0)]), None, 0, 0, model.index(-1, -1))  # c to the top
+    assert pump(app, lambda: win._selected_rows() == [0])
+    assert model.items[0].name == "c.txt"

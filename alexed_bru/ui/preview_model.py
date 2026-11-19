@@ -60,6 +60,7 @@ class RenameModel(QAbstractTableModel):
     includeChanged = Signal()
     itemsChanged = Signal()
     manualChanged = Signal()  # a name was typed by hand or reset
+    rowsDropped = Signal(list)  # rows moved by drag and drop: where they ended up
 
     def __init__(self, store: MetadataStore, parent=None) -> None:
         super().__init__(parent)
@@ -243,7 +244,7 @@ class RenameModel(QAbstractTableModel):
             return False
         rows = [int(r) for r in bytes(data.data(self.ROWS_MIME)).decode().split(",") if r]
         target = row if row != -1 else (parent.row() if parent.isValid() else len(self.items))
-        self.move_rows(rows, target)
+        self.rowsDropped.emit(self.move_rows(rows, target))
         return False  # reordering is done; tell the view not to remove the dragged rows
 
     def flags(self, index):

@@ -10,7 +10,7 @@ Reads audio (mutagen), video (MP4/MOV atoms), EXIF (Pillow) and PDF/Office metad
   1.1.1 renamed everything users see. Still "alexed" on purpose: the Python package `alexed_bru`, the preset format id
   `alexed-bru-preset`, this local folder name, and compatibility code for the old data folder `AlexedBRU_data`,
   env var `ALEXED_BRU_DATA` and Send To shortcut "Alexed Bulk Rename.lnk" (`paths.py`, `core/sendto.py`).
-- **Status:** v1.3.0 released 2026-11-18 (list export/import, sort before numbering, Quick Recipes, one window, Clear history; 1.2.0 Flatten, 1.1.x earlier that day, 1.0.0 on 2026-11-06). Public repo
+- **Status:** v1.3.1 released 2026-11-18 (1.3.1: drag selection + import-only-edited polish; 1.3.0: list export/import, sort before numbering, Quick Recipes, one window, Clear history; 1.2.0 Flatten, 1.1.x earlier that day, 1.0.0 on 2026-11-06). Public repo
   https://github.com/alexbedca/Alexbed-Bulk-Rename-Utility (GPL-3.0-or-later). Release assets: `AlexbedBulkRename.exe`,
   `AlexbedBulkRename.exe.sha256`, `LICENSE`, `THIRD-PARTY-NOTICES.txt`.
   1.1.0 added: Find duplicates, RegEx from example, plain-English rule cards, hand-edited names, auto-number

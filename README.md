@@ -5,7 +5,7 @@
 A portable, transactional bulk file renamer for big music libraries, photo and video folders and deeply nested document archives.
 It's a single `.exe` for Windows 10/11, with no installer and no registry footprint.
 
-**Version:** 1.3.0 &nbsp;|&nbsp; **Author:** Alexander Bediako &nbsp;|&nbsp; **Licence:** [GPL-3.0-or-later](LICENSE)
+**Version:** 1.3.1 &nbsp;|&nbsp; **Author:** Alexander Bediako &nbsp;|&nbsp; **Licence:** [GPL-3.0-or-later](LICENSE)
 
 > Versions 1.0.0 and 1.1.0 were published under the misspelt name *Alexed*. The app is **Alexbed**; old links
 > redirect here, and an existing `AlexedBRU_data` folder keeps being used, so your history and settings stay.
