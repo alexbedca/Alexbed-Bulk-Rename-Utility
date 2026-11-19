@@ -19,7 +19,7 @@ Status key: ☐ planned · ◐ in progress · ☑ done
 
 ## Phase 1: Organization and folders (v1.2.0)
 
-### ☑ Flatten a folder (built for v1.2.0, not released yet)
+### ☑ Flatten a folder (v1.2.0, 2026-11-18)
 Replaces the old stand-alone *Alex Folder Flattener* (2025, tkinter: no preview, no undo, no options).
 `core/flatten.py` plans the moves (pure), runs them as one transaction, removes only emptied subfolders and
 journals the batch with its folder list (`Batch.folders`), so undo recreates folders and redo removes them.

@@ -81,6 +81,12 @@ SLIDES = [
          say="Click Duplicates to find files with exactly the same content, even when their names are "
              "different. The original is kept, and the copies are ticked. Move them to a Duplicates "
              "folder, which you can undo, or to the Recycle Bin."),
+    dict(title="Flatten a folder", image="flatten.png", boxes=[(8, 172, 932, 422)],
+         caption="Flatten moves every file out of the subfolders into one folder.",
+         say="Got music spread over artist and album folders? Click Flatten and choose the folder. The "
+             "preview shows where every file goes. Files with the same name get a number or the folder name, "
+             "and the empty subfolders are removed. Like everything else, you can undo it from History, and "
+             "the files can go straight into the rename list."),
     dict(title="Names from music and photo tags", image="smart-tags.png", boxes=[(26, 470, 378, 525)],
          caption="Templates like <track:2>. <artist> - <title> use the files' own tags.",
          say="Music, photos, videos and documents carry tags. A template such as track, artist, title "

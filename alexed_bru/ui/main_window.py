@@ -207,7 +207,7 @@ class MainWindow(QMainWindow):
         presets_btn.setMenu(self.presets_menu)
         lay.addWidget(presets_btn)
         button("Flatten", "Move every file from a folder's subfolders up into it and remove the "
-               "emptied subfolders (preview first, undo from History)", self.flatten_folder)
+               "emptied subfolders (preview first, undo from History)", lambda: self.flatten_folder())
         button("Duplicates", "Find files in the list with identical content and set the extra "
                "copies aside", self.find_duplicates)
         button("History", "Applied renames: undo or redo past batches (Ctrl+H)", self.show_history)

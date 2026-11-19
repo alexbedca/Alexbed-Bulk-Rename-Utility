@@ -144,3 +144,17 @@ def test_only_empty_subfolders_are_removed(tmp_path):
     assert plan.moves == [] and fl.empty_folders(plan) == [root / "empty", root / "empty" / "deeper"]
     assert fl.apply_flatten(plan).ok
     assert dirs(root) == ["keep"]                     # only the folder holding a skipped file stays
+
+
+def test_flatten_button_starts_with_the_listed_files_folder(app, win, tmp_path, monkeypatch):
+    from PySide6.QtWidgets import QPushButton
+    from alexed_bru.ui import flatten_dialog as fd
+    root = tree(tmp_path / "Music", MUSIC)
+    win.add_paths([root])
+    assert pump(app, lambda: len(win.model.items) == 6)
+    seen = []
+    monkeypatch.setattr(fd.FlattenDialog, "exec", lambda self: seen.append(self.folder.text()))
+    monkeypatch.setattr(fd.FlattenDialog, "choose_folder", lambda self: seen.append("picker"))
+    button = next(b for b in win.findChildren(QPushButton) if b.text() == "Flatten")
+    button.click()                                   # the real button (Qt passes checked=False)
+    assert seen == [str(root)]

@@ -5,7 +5,7 @@
 A portable, transactional bulk file renamer for big music libraries, photo and video folders and deeply nested document archives.
 It's a single `.exe` for Windows 10/11, with no installer and no registry footprint.
 
-**Version:** 1.1.1 &nbsp;|&nbsp; **Author:** Alexander Bediako &nbsp;|&nbsp; **Licence:** [GPL-3.0-or-later](LICENSE)
+**Version:** 1.2.0 &nbsp;|&nbsp; **Author:** Alexander Bediako &nbsp;|&nbsp; **Licence:** [GPL-3.0-or-later](LICENSE)
 
 > Versions 1.0.0 and 1.1.0 were published under the misspelt name *Alexed*. The app is **Alexbed**; old links
 > redirect here, and an existing `AlexedBRU_data` folder keeps being used, so your history and settings stay.
@@ -114,7 +114,8 @@ spread over artist and album folders.
 - **Left alone:** `_Duplicates` folders, Windows' own `Thumbs.db` and `desktop.ini`, and folder links
   (junctions/shortcuts are never followed). A subfolder that still holds something is kept and named.
 - **All or nothing:** if a file is open in another program, nothing moves.
-- **Undo from History:** recreates the subfolders and puts every file back. Redo flattens again.
+- **Undo from History:** recreates the subfolders and puts every file back (subfolders that were already
+  empty are not recreated). Redo flattens again.
 - **Then rename:** tick *Then add the files to the rename list* to load the result straight into the preview.
 - A folder with only empty subfolders? The same window offers to remove them.
 

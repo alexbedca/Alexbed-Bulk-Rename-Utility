@@ -4,4 +4,4 @@
 
 APP_NAME = "Alexbed Bulk Rename Utility"
 APP_SHORT = "Alexbed BRU"
-APP_VERSION = "1.1.1"
+APP_VERSION = "1.2.0"
