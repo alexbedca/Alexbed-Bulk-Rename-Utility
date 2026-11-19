@@ -34,7 +34,8 @@ alexed_bru/
   skills/
     base.py              Rule base class, param schema, registry
     rules.py             built-in "Rules" skill
-    metadata/            "Smart Media" skill: system, audio, document, image providers
+    metadata/            "Smart Media" skill: system, audio, video, document, image providers
+                         (containers.py: pure-Python MKV/WebM and AVI header readers)
   ui/
     theme.py             dark palette + QSS, Windows 11 dark title bar
     main_window.py       dual-pane window

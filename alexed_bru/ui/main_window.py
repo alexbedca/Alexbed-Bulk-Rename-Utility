@@ -1041,7 +1041,10 @@ class MainWindow(QMainWindow):
         self.model.relocate({path_key(o.src): o.dst for o in ops}, mark_success=False)
         self.store.invalidate()
         self.schedule_preview()
-        self.status_text.setText(f"{'Re-applied' if redo else 'Rolled back'} {len(ops):,} file(s).")
+        text = f"{'Re-applied' if redo else 'Rolled back'} {len(ops):,} file(s)"
+        if batch.removed_folders:
+            text += f"; {'removed' if redo else 'restored'} {len(batch.removed_folders):,} folder(s)"
+        self.status_text.setText(text + ".")
         return True
 
     # ======================================================================

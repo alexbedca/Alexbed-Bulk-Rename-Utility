@@ -20,7 +20,7 @@ Reads audio (mutagen), video (MP4/MOV atoms), EXIF (Pillow) and PDF/Office metad
   Card: `.venv\Scripts\python tools\make_social_preview.py` → `docs/social-preview.png` (shows the version), then
   upload it in repo Settings → Social preview via Claude in Chrome.
 - **No CI** (no `.github/` folder): tests only run locally.
-- **Known limits:** MKV/AVI/WebM tags not read; folders themselves are not renamed.
+- **Known limits:** folders themselves are not renamed; video tags in other containers (WMV/FLV/TS) aren't read.
 - **Roadmap:** `docs/ROADMAP.md` (v1.2.0+ in four phases, with safety notes per item). Update its status marks
   when a feature ships.
 - **Read first:** `README.md` (user view), `docs/ARCHITECTURE.md` (layout, data flow, safety model, how to add rules),
@@ -36,11 +36,12 @@ alexed_bru/core/          engine, pipeline (pure), validation (+ auto-number), t
                           flatten), sendto (Explorer shortcut), listio (CSV/TXT export/import),
                           sorting (order by tags), recipes (Quick Recipes)
 alexed_bru/skills/        rule base + registry (rules.py, plain-English summary() per rule), regex_infer
-                          (RegEx from example), metadata providers (system/audio/video/document/image)
+                          (RegEx from example), metadata providers (system/audio/video/document/image;
+                          metadata/containers.py: pure-Python MKV/WebM + AVI tag readers)
 alexed_bru/ui/            main_window, preview_model (virtualised table + highlight delegate; New name editable),
                           rule_editor (+ From example panel), duplicates_dialog, flatten_dialog, single_instance (one window
-                          via QLocalServer), regex_help, workers, theme
-tests/                    pytest: engine, rules, metadata, media, ui, large (10k files, marked slow)
+                          via named mutex + QLocalServer), regex_help, workers, theme
+tests/                    pytest: engine, rules, metadata, media, containers (MKV/AVI), ui, large (10k, slow)
 assets/branding, assets/ui  logo/icon, UI icons
 test_library/             sample messy files for manual testing (git-ignored)
 build.ps1                 venv + tests + PyInstaller -> dist\AlexbedBulkRename.exe
@@ -74,6 +75,8 @@ build.ps1                 venv + tests + PyInstaller -> dist\AlexbedBulkRename.e
   Its Recycle Bin path is the one place files leave; it's refused on non-fixed drives (they'd be deleted permanently).
 - **Privacy:** no log/crash/debug files ever (logging goes to a NullHandler in `ui/app.py`); the data folder
   holds only history.json, settings.json, presets/ (`tests/test_privacy.py` checks both). History has Clear.
+- Send To race test: `conftest.py` starts the 3 helper processes (`tests/instance_race_helper.py`) when
+  collection ends, so they load Qt while other tests run; the test only releases them. Keeps ~0.6 s off the suite.
 - Tests: the `win` fixture deletes each window afterwards and uses a 5 ms preview delay; without that, closed
   windows piled up and the fast suite drifted past 15 s.
 - Shell edits: in Git Bash heredocs, `\\n` inside Python strings turned into real line breaks twice. Write patch

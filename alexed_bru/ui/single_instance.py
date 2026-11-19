@@ -7,6 +7,11 @@ user and this copy's folder, so two portable copies don't talk to each other. If
 fails, the new launch simply opens its own window: files are never lost.
 
 Message: 4-byte big-endian length + UTF-8 JSON {"paths": [...]}; reply b"ok".
+
+Race: Explorer's Send To on many files can start several copies in the same millisecond, before
+the first one listens. So, before Qt starts, each copy claims a named Windows mutex: exactly one
+gets it and becomes the window; the others keep trying to hand over their files for a few
+seconds while that window starts listening (see `claim_primary` / `hand_off`).
 """
 from __future__ import annotations
 
@@ -16,6 +21,7 @@ import json
 import os
 import struct
 import sys
+import time
 
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
@@ -30,6 +36,47 @@ def server_name() -> str:
         user = "user"
     seed = f"{user}|{os.path.normcase(str(app_root()))}".encode()
     return "AlexbedBRU-" + hashlib.sha1(seed).hexdigest()[:16]
+
+
+_mutex_handle = None  # held for the life of the process; Windows frees it when the process ends
+ERROR_ALREADY_EXISTS = 183
+
+
+def claim_primary(name: str | None = None) -> bool:
+    """True if this copy is the first one (it should open the window). Call before Qt starts.
+
+    Uses a per-user, per-folder named mutex, so two copies started in the same millisecond
+    can't both win. Off Windows, or if the mutex can't be made, every copy counts as first
+    (the old behaviour: the socket check still catches a copy that is already listening).
+    """
+    global _mutex_handle
+    if sys.platform != "win32":
+        return True
+    try:
+        import ctypes
+        from ctypes import wintypes
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.CreateMutexW.restype = wintypes.HANDLE
+        kernel32.CreateMutexW.argtypes = [ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR]
+        handle = kernel32.CreateMutexW(None, False, "Local\\" + (name or server_name()))
+        error = ctypes.get_last_error()
+    except Exception:  # noqa: BLE001
+        return True
+    if not handle:
+        return True
+    _mutex_handle = handle  # keep it open (also when it already existed: harmless)
+    return error != ERROR_ALREADY_EXISTS
+
+
+def hand_off(paths: list[str], name: str | None = None, wait_s: float = 3.0, step_s: float = 0.075) -> bool:
+    """Keep trying to give `paths` to the first copy while it starts listening. True if it took them."""
+    deadline = time.monotonic() + wait_s
+    while True:
+        if send_to_running(paths, name):
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(step_s)
 
 
 def _allow_foreground() -> None:

@@ -51,7 +51,8 @@ def media(tmp_path_factory):
                        ALBUM="I Put a Spell on You", TRACKNUMBER="4/12", DATE="1965", GENRE="Jazz"),
         "m4a": job(d / "song.m4a", AUDIO, "-c:a", "aac", artist="Miles Davis", title="So What",
                       album="Kind of Blue", track="1", date="1959"),
-        "mkv": job(d / "movie.mkv", SMALL_VIDEO, title="Some Movie"),
+        "mkv": job(d / "movie.mkv", SMALL_VIDEO, title="Some Movie", artist="Jane Doe", date="2019-05-01"),
+        "avi": job(d / "clip.avi", SMALL_VIDEO, "-c:v", "mpeg4", title="Home Video", artist="Dad", date="2004"),
         "ogg": job(d / "voice.ogg", AUDIO, "-c:a", "libvorbis", ARTIST="Narrator", TITLE="Chapter 1"),
     }
     # ffmpeg runs in parallel: the fast suite has a 15-second budget
@@ -102,10 +103,11 @@ def test_m4a_and_ogg(media):
 
 
 @needs_ffmpeg
-def test_unsupported_container_falls_back_to_system_tags(media):
-    # MKV tags aren't read (would need an extra library); system tags still work.
-    row = preview(media["mkv"], "<name> <modified:%Y>")
-    assert row.proposed.startswith("movie 20") and row.proposed.endswith(".mkv")
+def test_mkv_and_avi_made_by_ffmpeg(media):
+    row = preview(media["mkv"], "<artist> - <title> (<year>) [<quality>] <duration>")
+    assert row.proposed == "Jane Doe - Some Movie (2019) [720p] 0.01.mkv"
+    assert preview(media["avi"], "<year> <artist> - <title> <resolution>").proposed \
+        == "2004 Dad - Home Video 1280x720.avi"
 
 
 # ---------------------------------------------------------------------------

@@ -195,9 +195,10 @@ class FlattenDialog(QDialog):
         if plan is None:
             return
         if not plan.moves:
-            fl.apply_flatten(plan)
+            fl.apply_flatten(plan, self.window_.history)
             removed = sum(1 for f in plan.folders if not f.exists())
-            QMessageBox.information(self, APP_NAME, f"Removed {removed:,} empty subfolder(s).")
+            QMessageBox.information(self, APP_NAME, f"Removed {removed:,} empty subfolder(s). "
+                                    "Undo any time from History.")
             self.refresh()
             return
         text = (f"Move {len(plan.moves):,} file(s) up into “{plan.root}” and remove the subfolders "

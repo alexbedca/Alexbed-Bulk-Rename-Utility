@@ -23,6 +23,8 @@ Status key: ☐ planned · ◐ in progress · ☑ done
 Replaces the old stand-alone *Alex Folder Flattener* (2025, tkinter: no preview, no undo, no options).
 `core/flatten.py` plans the moves (pure), runs them as one transaction, removes only emptied subfolders and
 journals the batch with its folder list (`Batch.folders`), so undo recreates folders and redo removes them.
+Since v1.4.0 the batch also records every subfolder it removed (`Batch.removed_folders`, including ones that
+never held a file), so undo restores the folder tree exactly; removing only empty subfolders is undoable too.
 Options: levels (all / first), clash naming (number / folder name), leave `_Duplicates` and Windows clutter.
 Folder links are never followed. Ideas for later: only some file types (e.g. only audio), and a
 *Sort into subfolders* mode (below) as its reverse.
@@ -66,6 +68,10 @@ Today Send To opens a second window if the app is already running.
 - Send To passes many paths on one command line (about 32,000 characters max on Windows): for very large
   selections, tell the user to drag the files in instead.
 - Fall back to opening normally if the socket fails; never lose the file list. Tests use a unique server name.
+- **v1.4.0: same-millisecond launches.** Before Qt starts, each copy claims a per-user, per-folder named mutex
+  (`Local\AlexbedBRU-<hash>`). Exactly one wins and opens the window; the others retry the handoff every
+  75 ms for up to 3 s while that window starts listening, then exit. If the window never listens, they open
+  their own window, so files are still never lost. Tested with 3 real processes released at the same instant.
 
 ### ☑ One-click Quick Recipes (v1.3.0)
 Starter recipes on an empty rule stack ("Tidy music from tags", "Photos by date taken", "Number files 01, 02…",
@@ -93,8 +99,13 @@ drag-to-reorder rows.
 
 ## Phase 3: Broader media support (v1.4.0)
 
-### ☐ MKV / WebM / AVI tags
-Today these formats only get system tags (dates, size).
+### ☑ MKV / WebM / AVI tags (v1.4.0)
+Done in `skills/metadata/containers.py` (pure Python, a few hundred lines; no new dependency). It reads the
+Matroska Info, Tracks and Tags elements (following the SeekHead to Tags written after the video) and the AVI
+`avih` header and `LIST INFO` chunk. Tags feed `<title>`, `<artist>`, `<year>`, `<date>`, `<show>`,
+`<season>`, `<episode>`, `<track>`, `<duration>`, `<resolution>`, `<quality>` and `<video:...>`. Tests build
+tiny files in memory and flip/truncate every byte; ffmpeg-made files are checked when ffmpeg is installed.
+Original plan:
 - **MKV/WebM (Matroska/EBML):** a small pure-Python reader for the Segment Info (title, duration, date) and
   Tags elements, plus video track width/height for `<resolution>`/`<quality>`. Read only the first few MB and
   stop at the first Cluster, so big files stay fast.

@@ -149,8 +149,7 @@ def test_rule_undo_redo_reorder_toggle_duplicate_delete(app, win):
 def test_editor_builds_for_every_rule_type(app, win):
     for cls in RULE_REGISTRY.values():
         win.add_rule(cls)
-        pump(app, timeout=0.05)
-        assert win.editor.rule is win.rules[-1]
+        assert pump(app, lambda: win.editor.rule is win.rules[-1], timeout=2)  # no fixed wait
     assert len(win.rules) == len(RULE_REGISTRY)
 
 

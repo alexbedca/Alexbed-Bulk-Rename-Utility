@@ -361,13 +361,26 @@ def _quicktime_tags(path: Path) -> MetaDict:
 
 @register_provider
 class VideoProvider(MetadataProvider):
-    """MP4 / M4V / MOV / 3GP: iTunes-style tags plus duration and resolution."""
+    """MP4 / M4V / MOV / 3GP: iTunes-style tags; MKV / WebM / AVI: Matroska tags and RIFF INFO.
+    All with duration and resolution."""
 
     namespace = "video"
     label = "Video"
-    extensions = frozenset({"mp4", "m4v", "mov", "3gp", "3g2"})
+    MATROSKA = frozenset({"mkv", "mk3d", "webm"})
+    extensions = frozenset({"mp4", "m4v", "mov", "3gp", "3g2", "avi"}) | MATROSKA
 
     def read(self, path: Path) -> MetaDict:
+        ext = path.suffix[1:].lower()
+        if ext in self.MATROSKA or ext == "avi":
+            from alexed_bru.skills.metadata.containers import read_avi, read_matroska
+            try:
+                data = read_matroska(path) if ext in self.MATROSKA else read_avi(path)
+            except (ValueError, struct_error, OverflowError, MemoryError):
+                data = {}  # corrupt or cut off: no tags (OSError still reaches the store, as for MP4)
+            if data.get("width") and data.get("height"):
+                w, h = data["width"], data["height"]
+                data.update(resolution=f"{w}x{h}", quality=_quality(w, h))
+            return data
         from mutagen.mp4 import MP4
 
         data: MetaDict = {}

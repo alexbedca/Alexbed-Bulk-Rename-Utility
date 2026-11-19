@@ -117,7 +117,8 @@ In the **⋯** menu (top right), tick **Add to Windows "Send To" menu**. Then yo
 **Send to → Alexbed Bulk Rename** to open them in the app. This adds one shortcut to your own
 `%APPDATA%\Microsoft\Windows\SendTo` folder, needs no admin rights, and unticking removes it.
 If you move the exe, tick it again. If the app is already open, the files go to that window (no second
-window); this also works when you start the exe again with files.
+window); this also works when you start the exe again with files, and when Explorer starts several copies at
+the same moment for a big selection: they all hand their files to one window.
 
 ## Duplicate files
 
@@ -145,10 +146,10 @@ spread over artist and album folders.
 - **Left alone:** `_Duplicates` folders, Windows' own `Thumbs.db` and `desktop.ini`, and folder links
   (junctions/shortcuts are never followed). A subfolder that still holds something is kept and named.
 - **All or nothing:** if a file is open in another program, nothing moves.
-- **Undo from History:** recreates the subfolders and puts every file back (subfolders that were already
-  empty are not recreated). Redo flattens again.
+- **Undo from History:** puts every file back and recreates the subfolders exactly as they were, empty ones
+  included. Redo flattens again.
 - **Then rename:** tick *Then add the files to the rename list* to load the result straight into the preview.
-- A folder with only empty subfolders? The same window offers to remove them.
+- A folder with only empty subfolders? The same window offers to remove them (also undoable from History).
 
 ![Flatten a folder: preview of every move](docs/screenshots/flatten.png)
 
@@ -202,11 +203,13 @@ Every rule can target the name, the extension, or both, and works on any file ty
 |---|---|---|
 | Audio | MP3 (ID3v1/v2), FLAC, OGG/Opus, M4A/AAC, WMA, WAV, AIFF, APE, WavPack, DSF | artist, album, title, track, disc, year, genre, bitrate, duration |
 | Video | MP4, M4V, MOV, 3GP (iTunes tags, QuickTime atoms, iPhone `mdta` keys) | title, show, season, episode, date recorded, make/model, resolution, quality (1080p) |
+| Video | MKV, WebM (Matroska tags), AVI (RIFF `INFO`) | title, artist, year/date, genre, show, season, episode/track, duration, resolution, quality |
 | Documents | PDF, DOCX/XLSX/PPTX (+ macro variants) | title, author, subject, created, modified, pages |
 | Images | JPEG, TIFF, PNG, WebP, HEIC*, DNG* (EXIF) | date taken, camera make/model, width/height, ISO |
 | Any file | system | created, modified, size, parent/grandparent folder |
 
-\* if Pillow can open it. MKV/AVI/WebM tags aren't read yet; system tags still work for them.
+\* if Pillow can open it. MKV, WebM and AVI are read by a small built-in reader that only looks at the file's
+headers (never the video itself), so even large files are quick. A damaged or cut-off file simply gives no tags.
 
 ## Tags
 

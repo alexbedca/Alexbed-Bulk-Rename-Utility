@@ -27,12 +27,15 @@ def main(argv: list[str] | None = None) -> int:
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Alexbed.BulkRenameUtility")
         except Exception:  # noqa: BLE001
             pass
+    # One window: claim the named mutex before Qt starts, so copies launched in the same
+    # millisecond (Explorer's Send To on many files) can't both open a window.
+    from alexed_bru.ui.single_instance import InstanceServer, claim_primary, hand_off, send_to_running
+    first = claim_primary()
     app = QApplication(argv)
-    # One window: if this copy is already open (e.g. this launch came from Explorer's Send To),
-    # hand it the files and quit before showing anything.
-    from alexed_bru.ui.single_instance import InstanceServer, send_to_running
-    files = [a for a in argv[1:] if os.path.exists(a)]
-    if send_to_running([os.path.abspath(a) for a in files]):
+    files = [os.path.abspath(a) for a in argv[1:] if os.path.exists(a)]
+    # A later copy waits (up to 3 s) for the first one to listen, hands over its files and quits.
+    # The first copy still checks once, for an older version that is already open without the mutex.
+    if hand_off(files) if not first else send_to_running(files):
         return 0
     # Listen at once (building the window takes seconds); files that arrive meanwhile wait.
     server = InstanceServer()

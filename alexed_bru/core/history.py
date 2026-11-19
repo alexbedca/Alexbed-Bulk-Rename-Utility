@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import os
 import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime
 from pathlib import Path
 
@@ -28,6 +28,9 @@ class Batch:
     # Folders this batch creates or removes (Find duplicates, Flatten folder). Undo and redo
     # recreate the ones the moves need and remove the ones left empty. Older journals lack it.
     folders: list[str] = field(default_factory=list)
+    # Folders that existed before the batch and that it removed (Flatten: every emptied subfolder,
+    # also ones that held no files at all). Undo recreates them, so the tree comes back exactly.
+    removed_folders: list[str] = field(default_factory=list)
 
     @property
     def rename_ops(self) -> list[RenameOp]:
@@ -48,7 +51,9 @@ class History:
         history = cls(path)
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
-            history.batches = [Batch(**{**b, "ops": [tuple(o) for o in b["ops"]]})
+            known = {f.name for f in fields(Batch)}  # a newer version's extra fields are ignored
+            history.batches = [Batch(**{**{k: v for k, v in b.items() if k in known},
+                                        "ops": [tuple(o) for o in b["ops"]]})
                                for b in raw.get("batches", [])]
         except (OSError, ValueError, KeyError, TypeError):
             history.batches = []
@@ -61,11 +66,12 @@ class History:
         tmp.write_text(json.dumps(payload, indent=1, ensure_ascii=False), encoding="utf-8")
         os.replace(tmp, self.path)  # atomic: a crash never leaves half a journal
 
-    def record(self, ops: list[RenameOp], label: str, folders=()) -> Batch:
+    def record(self, ops: list[RenameOp], label: str, folders=(), removed_folders=()) -> Batch:
         # A new batch invalidates the redo branch, as in any editor.
         self.batches = [b for b in self.batches if not b.undone]
         batch = Batch(uuid.uuid4().hex, datetime.now().isoformat(timespec="seconds"), label,
-                      [(str(o.src), str(o.dst)) for o in ops], folders=[str(f) for f in folders])
+                      [(str(o.src), str(o.dst)) for o in ops], folders=[str(f) for f in folders],
+                      removed_folders=[str(f) for f in removed_folders])
         self.batches.append(batch)
         self.save()
         return batch
@@ -91,12 +97,15 @@ class History:
 
     def _run(self, batch: Batch, ops: list[RenameOp], undone: bool) -> TransactionResult:
         managed = managed_folders(batch)
+        removed = [Path(f) for f in batch.removed_folders]
         created = ensure_folders(managed, {op.dst.parent for op in ops})
         result = execute(ops)
         if result.ok:
             batch.undone = undone
             self.save()
-            remove_empty(managed)
+            remove_empty(managed + removed)
+            if undone:
+                restore_folders(removed)
         else:
             remove_empty(created)
         return result
@@ -123,6 +132,15 @@ def ensure_folders(managed, needed) -> list[Path]:
             continue  # the transaction will then fail cleanly on the missing folder
         created.extend(reversed(missing))
     return created
+
+
+def restore_folders(folders) -> None:
+    """Recreate folders a batch removed (undo). Ones already there are left as they are."""
+    for folder in sorted(set(map(Path, folders)), key=lambda f: len(f.parts)):
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass  # e.g. a file now has that name: the files are back, only this folder is missing
 
 
 def remove_empty(folders) -> None:

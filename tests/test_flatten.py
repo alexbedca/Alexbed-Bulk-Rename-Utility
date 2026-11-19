@@ -43,9 +43,9 @@ def test_flatten_numbers_clashes_and_removes_emptied_folders(tmp_path):
     assert dirs(root) == []                          # Album A, CD1, Album B and the empty one are gone
 
     batch = history.batches[-1]
-    assert history.rollback(batch).ok                # undo: folders recreated, files back
+    assert history.rollback(batch).ok                # undo: folders (also the empty one) recreated, files back
     assert state(root) == MUSIC
-    assert dirs(root) == ["Album A", "Album A/CD1", "Album B"]
+    assert dirs(root) == ["Album A", "Album A/CD1", "Album B", "Empty sub"]
     assert history.reapply(batch).ok                 # redo
     assert dirs(root) == [] and len(state(root)) == 6
 
@@ -158,3 +158,38 @@ def test_flatten_button_starts_with_the_listed_files_folder(app, win, tmp_path, 
     button = next(b for b in win.findChildren(QPushButton) if b.text() == "Flatten")
     button.click()                                   # the real button (Qt passes checked=False)
     assert seen == [str(root)]
+
+
+def test_undo_restores_empty_subfolders_exactly_and_redo_removes_them(tmp_path):
+    root = tree(tmp_path / "Show", {"S1/e1.mkv": "1", "S1/Extras/e2.mkv": "2"})
+    for empty in ("S1/Subs", "S1/Extras/Old/Older", "Unused"):     # never held a file
+        (root / empty).mkdir(parents=True)
+    before_files, before_dirs = state(root), dirs(root)
+    history = History(tmp_path / "h.json")
+    assert fl.apply_flatten(fl.plan_flatten(root), history).ok
+    assert dirs(root) == [] and sorted(state(root)) == ["e1.mkv", "e2.mkv"]
+    batch = History.load(tmp_path / "h.json").batches[-1]          # survives a restart
+    assert history.rollback(batch).ok
+    assert state(root) == before_files and dirs(root) == before_dirs
+    assert history.reapply(batch).ok
+    assert dirs(root) == [] and sorted(state(root)) == ["e1.mkv", "e2.mkv"]
+
+
+def test_removing_only_empty_subfolders_can_be_undone(tmp_path):
+    root = tree(tmp_path / "R", {"a.txt": "a"})
+    (root / "x" / "y").mkdir(parents=True)
+    history = History(tmp_path / "h.json")
+    assert fl.apply_flatten(fl.plan_flatten(root), history).ok
+    batch = history.batches[-1]
+    assert batch.ops == [] and dirs(root) == []
+    assert history.rollback(batch).ok and dirs(root) == ["x", "x/y"]
+    assert history.reapply(batch).ok and dirs(root) == []
+
+
+def test_journal_with_unknown_fields_still_loads(tmp_path):
+    import json
+    path = tmp_path / "h.json"
+    path.write_text(json.dumps({"version": 1, "batches": [{
+        "id": "1", "timestamp": "2026-11-19T10:00:00", "label": "x", "ops": [["a", "b"]],
+        "from_a_future_version": True}]}), encoding="utf-8")
+    assert [b.label for b in History.load(path).batches] == ["x"]

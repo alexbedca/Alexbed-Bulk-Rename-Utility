@@ -68,3 +68,35 @@ def test_two_real_processes(tmp_path):
         assert server.stdout.readline().strip() == "GOT C:/a.txt"
     finally:
         server.wait(timeout=20)
+
+
+def test_mutex_lets_exactly_one_copy_win():
+    name = unique()
+    assert si.claim_primary(name) is True     # first claim in this process
+    handle = si._mutex_handle
+    assert si.claim_primary(name) is False    # the mutex now exists: a second copy loses
+    if sys.platform == "win32":
+        import ctypes
+        ctypes.windll.kernel32.CloseHandle(si._mutex_handle)
+        ctypes.windll.kernel32.CloseHandle(handle)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="named mutex is Windows only")
+def test_copies_started_in_the_same_instant_hand_files_to_one_window(request):
+    """Explorer's Send To on many files: 3 real processes claim at the same moment.
+    Exactly one opens a window; it listens only after 0.15 s, yet gets every other copy's file.
+    (conftest starts the copies when collection ends, so they load Qt while other tests run.)"""
+    from conftest import start_race_copies
+    name, procs = getattr(request.config, "_race_copies", None) or (unique(), None)
+    procs = procs or start_race_copies(name)
+    for p in procs:                                   # all loaded and waiting...
+        assert p.stdout.readline().strip() == "READY"
+    for p in procs:                                   # ...then released together
+        p.stdin.write("go\n")
+        p.stdin.flush()
+    results = [json.loads(p.communicate(timeout=20)[0].strip().splitlines()[-1]) for p in procs]
+    winners = [r for r in results if r["first"]]
+    assert len(winners) == 1
+    assert all(r["handed"] for r in results if not r["first"])
+    expected = sorted(f"C:/file{i}.txt" for i, r in enumerate(results) if not r["first"])
+    assert winners[0]["got"] == expected

@@ -9,8 +9,9 @@ Safety (same model as renaming, see docs/ARCHITECTURE.md):
 * Planning never touches the disk; the preview shows every move first.
 * All moves run as one transaction: if any file is locked, every move is undone.
 * Only subfolders that end up **empty** are removed; anything still holding a skipped or
-  locked file stays. The batch is journalled with its folder list, so History's undo
-  recreates the folders and puts every file back, and redo flattens again.
+  locked file stays. The batch is journalled with its folder list and the folders it removed
+  (also ones that never held a file), so History's undo puts every file back and recreates
+  the folder tree exactly; redo flattens again. Removing only empty subfolders is undoable too.
 * Folder links (junctions, symbolic links) are never followed; `_Duplicates` folders and
   Windows' own clutter files (Thumbs.db, desktop.ini) are left alone by default.
 * Moves stay inside the chosen folder, so they are renames on the same drive.
@@ -133,16 +134,19 @@ def plan_flatten(root: Path, depth: int | None = None, clash: str = CLASH_NUMBER
 def apply_flatten(plan: FlattenPlan, history: History | None = None,
                   progress: Callable[[int, int], None] | None = None) -> TransactionResult:
     """Run the moves as one transaction, then remove subfolders left empty; journalled for undo."""
-    if not plan.moves:  # nothing to move: just tidy away empty subfolders (no undo needed)
-        remove_empty(plan.folders)
-        return TransactionResult(ok=True, rolled_back=False)
-    result = execute(plan.ops, progress)
-    if not result.ok:
-        return result
+    existed = [f for f in plan.folders if f.is_dir()]
+    if plan.moves:
+        result = execute(plan.ops, progress)
+        if not result.ok:
+            return result
+        label = f"Flattened {plan.root.name}: {len(result.ops)} file(s) moved up"
+    else:  # nothing to move: just tidy away empty subfolders
+        result = TransactionResult(ok=True, rolled_back=False)
+        label = f"Removed empty subfolders in {plan.root.name}"
     remove_empty(plan.folders)
-    if history is not None:
-        history.record(result.ops, f"Flattened {plan.root.name}: {len(result.ops)} file(s) moved up",
-                       folders=plan.folders)
+    removed = [f for f in existed if not f.exists()]
+    if history is not None and (result.ops or removed):
+        history.record(result.ops, label, folders=plan.folders, removed_folders=removed)
     return result
 
 
