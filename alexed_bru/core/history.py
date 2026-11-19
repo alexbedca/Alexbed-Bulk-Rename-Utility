@@ -25,6 +25,9 @@ class Batch:
     label: str
     ops: list[tuple[str, str]]
     undone: bool = False
+    # Folders this batch creates or removes (Find duplicates, Flatten folder). Undo and redo
+    # recreate the ones the moves need and remove the ones left empty. Older journals lack it.
+    folders: list[str] = field(default_factory=list)
 
     @property
     def rename_ops(self) -> list[RenameOp]:
@@ -58,11 +61,11 @@ class History:
         tmp.write_text(json.dumps(payload, indent=1, ensure_ascii=False), encoding="utf-8")
         os.replace(tmp, self.path)  # atomic: a crash never leaves half a journal
 
-    def record(self, ops: list[RenameOp], label: str) -> Batch:
+    def record(self, ops: list[RenameOp], label: str, folders=()) -> Batch:
         # A new batch invalidates the redo branch, as in any editor.
         self.batches = [b for b in self.batches if not b.undone]
         batch = Batch(uuid.uuid4().hex, datetime.now().isoformat(timespec="seconds"), label,
-                      [(str(o.src), str(o.dst)) for o in ops])
+                      [(str(o.src), str(o.dst)) for o in ops], folders=[str(f) for f in folders])
         self.batches.append(batch)
         self.save()
         return batch
@@ -76,38 +79,50 @@ class History:
         return undone[0] if undone else None
 
     def rollback(self, batch: Batch) -> TransactionResult:
-        result = execute([op.inverse() for op in batch.rename_ops])
-        if result.ok:
-            batch.undone = True
-            self.save()
-            _remove_empty(_set_aside_folders(batch))
-        return result
+        return self._run(batch, [op.inverse() for op in batch.rename_ops], undone=True)
 
     def reapply(self, batch: Batch) -> TransactionResult:
-        created = []
-        for folder in _set_aside_folders(batch):  # undo removed them; the moves need them back
-            if not folder.exists():
-                try:
-                    folder.mkdir()
-                except OSError:
-                    continue  # the transaction will fail cleanly on the missing folder
-                created.append(folder)
-        result = execute(batch.rename_ops)
+        return self._run(batch, batch.rename_ops, undone=False)
+
+    def _run(self, batch: Batch, ops: list[RenameOp], undone: bool) -> TransactionResult:
+        managed = managed_folders(batch)
+        created = ensure_folders(managed, {op.dst.parent for op in ops})
+        result = execute(ops)
         if result.ok:
-            batch.undone = False
+            batch.undone = undone
             self.save()
+            remove_empty(managed)
         else:
-            _remove_empty(created)
+            remove_empty(created)
         return result
 
 
-def _set_aside_folders(batch: Batch) -> list[Path]:
-    """The _Duplicates folders a batch moved files into (only that name; never anything else)."""
+def managed_folders(batch: Batch) -> list[Path]:
+    """Folders a batch may create and remove: its recorded list, or (journals from before 1.2)
+    the _Duplicates folders it moved files into. Never anything else."""
+    if batch.folders:
+        return [Path(f) for f in batch.folders]
     return sorted({op.dst.parent for op in batch.rename_ops if op.dst.parent.name == SET_ASIDE_FOLDER})
 
 
-def _remove_empty(folders) -> None:
-    for folder in folders:
+def ensure_folders(managed, needed) -> list[Path]:
+    """Create the managed folders that moves into `needed` require; returns what was created."""
+    created = []
+    for folder in sorted(set(managed) & set(needed), key=lambda f: len(f.parts)):  # parents first
+        if folder.exists():
+            continue
+        missing = [p for p in [folder, *folder.parents] if not p.exists()]
+        try:
+            folder.mkdir(parents=True)
+        except OSError:
+            continue  # the transaction will then fail cleanly on the missing folder
+        created.extend(reversed(missing))
+    return created
+
+
+def remove_empty(folders) -> None:
+    """Remove folders that are empty, deepest first (a parent may empty once its child goes)."""
+    for folder in sorted(set(map(Path, folders)), key=lambda f: len(f.parts), reverse=True):
         try:
             folder.rmdir()  # only succeeds when the folder is empty
         except OSError:

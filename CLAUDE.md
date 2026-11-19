@@ -32,11 +32,12 @@ Python 3.11+ (venv in `.venv`), PySide6-Essentials (Qt 6), mutagen, pypdf, Pillo
 alexed_bru/__init__.py    APP_NAME / APP_VERSION (single place for the version)
 alexed_bru/paths.py       portable data dir: AlexbedBRU_data\ next to the exe (override: ALEXBED_BRU_DATA)
 alexed_bru/core/          engine, pipeline (pure), validation (+ auto-number), transaction (two-phase + rollback),
-                          history, presets, tags, duplicates (content finder), sendto (Explorer shortcut)
+                          history (+ managed folders), presets, tags, duplicates (content finder), flatten (folder flatten),
+                          sendto (Explorer shortcut)
 alexed_bru/skills/        rule base + registry (rules.py, plain-English summary() per rule), regex_infer
                           (RegEx from example), metadata providers (system/audio/video/document/image)
 alexed_bru/ui/            main_window, preview_model (virtualised table + highlight delegate; New name editable),
-                          rule_editor (+ From example panel), duplicates_dialog, regex_help, workers, theme
+                          rule_editor (+ From example panel), duplicates_dialog, flatten_dialog, regex_help, workers, theme
 tests/                    pytest: engine, rules, metadata, media, ui, large (10k files, marked slow)
 assets/branding, assets/ui  logo/icon, UI icons
 test_library/             sample messy files for manual testing (git-ignored)

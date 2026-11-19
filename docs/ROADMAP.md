@@ -19,6 +19,14 @@ Status key: ☐ planned · ◐ in progress · ☑ done
 
 ## Phase 1: Organization and folders (v1.2.0)
 
+### ☑ Flatten a folder (built for v1.2.0, not released yet)
+Replaces the old stand-alone *Alex Folder Flattener* (2025, tkinter: no preview, no undo, no options).
+`core/flatten.py` plans the moves (pure), runs them as one transaction, removes only emptied subfolders and
+journals the batch with its folder list (`Batch.folders`), so undo recreates folders and redo removes them.
+Options: levels (all / first), clash naming (number / folder name), leave `_Duplicates` and Windows clutter.
+Folder links are never followed. Ideas for later: only some file types (e.g. only audio), and a
+*Sort into subfolders* mode (below) as its reverse.
+
 ### ☐ Folder renaming mode
 Rename folders themselves, not only the files in them.
 - **Ordering:** rename deepest folders first, so a parent's new path never invalidates a child's queued

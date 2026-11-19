@@ -1,5 +1,6 @@
 """Real media files (generated with ffmpeg when available) and the general-purpose rules."""
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 import subprocess
 from pathlib import Path
 
@@ -14,6 +15,10 @@ FFMPEG = shutil.which("ffmpeg")
 needs_ffmpeg = pytest.mark.skipif(FFMPEG is None, reason="ffmpeg not installed (only needed to make fixtures)")
 
 
+def job(*args, **meta):
+    return args, meta
+
+
 def ffmpeg(out: Path, inputs: list[str], *extra: str, **meta: str) -> Path:
     args = [FFMPEG, "-hide_banner", "-loglevel", "error", "-y", *inputs, *extra]
     for k, v in meta.items():
@@ -22,8 +27,8 @@ def ffmpeg(out: Path, inputs: list[str], *extra: str, **meta: str) -> Path:
     return out
 
 
-VIDEO = ["-f", "lavfi", "-i", "testsrc=duration=1:size=1920x1080:rate=5"]
-SMALL_VIDEO = ["-f", "lavfi", "-i", "testsrc=duration=1:size=1280x720:rate=5"]
+VIDEO = ["-f", "lavfi", "-i", "testsrc=duration=1:size=1920x1080:rate=1"]  # 1 frame: tags only
+SMALL_VIDEO = ["-f", "lavfi", "-i", "testsrc=duration=1:size=1280x720:rate=1"]
 AUDIO = ["-f", "lavfi", "-i", "sine=frequency=440:duration=1"]
 
 
@@ -32,23 +37,27 @@ def media(tmp_path_factory):
     if FFMPEG is None:
         pytest.skip("ffmpeg not installed")
     d = tmp_path_factory.mktemp("media")
-    return {
-        "mp4": ffmpeg(d / "VID_20240101.mp4", VIDEO, "-pix_fmt", "yuv420p",
+    jobs = {
+        "mp4": job(d / "VID_20240101.mp4", VIDEO, "-pix_fmt", "yuv420p",
                       title="Pilot", artist="Studio X", date="2019", show="Night Shift",
                       season_number="2", episode_sort="5", genre="Drama"),
-        "mov": ffmpeg(d / "clip.mov", SMALL_VIDEO, "-pix_fmt", "yuv420p", title="Behind the Scenes"),
-        "iphone": ffmpeg(d / "IMG_4821.MOV", SMALL_VIDEO, "-pix_fmt", "yuv420p", "-movflags",
+        "mov": job(d / "clip.mov", SMALL_VIDEO, "-pix_fmt", "yuv420p", title="Behind the Scenes"),
+        "iphone": job(d / "IMG_4821.MOV", SMALL_VIDEO, "-pix_fmt", "yuv420p", "-movflags",
                          "use_metadata_tags", **{"com.apple.quicktime.creationdate": "2023-06-01T14:22:09+0100",
                                                  "com.apple.quicktime.make": "Apple",
                                                  "com.apple.quicktime.model": "iPhone 14 Pro"}),
-        "untagged_mp4": ffmpeg(d / "raw.mp4", SMALL_VIDEO, "-pix_fmt", "yuv420p"),
-        "flac": ffmpeg(d / "04 - track.flac", AUDIO, ARTIST="Nina Simone", TITLE="Feeling Good",
+        "untagged_mp4": job(d / "raw.mp4", SMALL_VIDEO, "-pix_fmt", "yuv420p"),
+        "flac": job(d / "04 - track.flac", AUDIO, ARTIST="Nina Simone", TITLE="Feeling Good",
                        ALBUM="I Put a Spell on You", TRACKNUMBER="4/12", DATE="1965", GENRE="Jazz"),
-        "m4a": ffmpeg(d / "song.m4a", AUDIO, "-c:a", "aac", artist="Miles Davis", title="So What",
+        "m4a": job(d / "song.m4a", AUDIO, "-c:a", "aac", artist="Miles Davis", title="So What",
                       album="Kind of Blue", track="1", date="1959"),
-        "mkv": ffmpeg(d / "movie.mkv", SMALL_VIDEO, title="Some Movie"),
-        "ogg": ffmpeg(d / "voice.ogg", AUDIO, "-c:a", "libvorbis", ARTIST="Narrator", TITLE="Chapter 1"),
+        "mkv": job(d / "movie.mkv", SMALL_VIDEO, title="Some Movie"),
+        "ogg": job(d / "voice.ogg", AUDIO, "-c:a", "libvorbis", ARTIST="Narrator", TITLE="Chapter 1"),
     }
+    # ffmpeg runs in parallel: the fast suite has a 15-second budget
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = {k: pool.submit(lambda a=args: ffmpeg(*a[0], **a[1])) for k, args in jobs.items()}
+        return {k: f.result() for k, f in futures.items()}
 
 
 def preview(path, template):

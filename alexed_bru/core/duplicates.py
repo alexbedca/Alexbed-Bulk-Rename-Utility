@@ -196,7 +196,8 @@ def move_to_folder(extras: Sequence[Path], history: History | None = None,
     if not result.ok:
         _remove_empty(created)
     elif history is not None:
-        history.record(result.ops, f"Moved {len(result.ops)} duplicate(s) to {DUPLICATES_FOLDER}")
+        history.record(result.ops, f"Moved {len(result.ops)} duplicate(s) to {DUPLICATES_FOLDER}",
+                       folders={op.dst.parent for op in result.ops})
     return result
 
 

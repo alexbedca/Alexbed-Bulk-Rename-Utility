@@ -20,6 +20,7 @@ It's a single `.exe` for Windows 10/11, with no installer and no registry footpr
 - **No RegEx needed:** show one example of the name you want and the pattern is written for you. Every rule card says in plain English what it does.
 - **Fix single files by hand:** double-click a new name to type your own.
 - **Find duplicate files** by content, not by name, and set the extra copies aside safely.
+- **Flatten folders:** bring every file up out of its subfolders into one folder, with a preview and undo.
 
 ## How-to video
 
@@ -99,6 +100,25 @@ Click **Duplicates** to find files in the list that have exactly the same conten
 Nothing is ever deleted permanently.
 
 ![Find duplicates: identical files grouped, the original kept, copies ticked](docs/screenshots/duplicates.png)
+
+## Flatten a folder
+
+Click **Flatten** and choose a folder (it starts with the folder your listed files share). Every file in its
+subfolders moves up into it, and the subfolders that end up empty are removed. Handy for a music playlist
+spread over artist and album folders.
+
+- **Preview first:** each file shows where it comes from and its name in the top folder.
+- **Same name twice** (two `cover.jpg`): add a number (`cover (1).jpg`) or the folder name
+  (`Album A - cover.jpg`).
+- **Levels:** all subfolders, or only the first level.
+- **Left alone:** `_Duplicates` folders, Windows' own `Thumbs.db` and `desktop.ini`, and folder links
+  (junctions/shortcuts are never followed). A subfolder that still holds something is kept and named.
+- **All or nothing:** if a file is open in another program, nothing moves.
+- **Undo from History:** recreates the subfolders and puts every file back. Redo flattens again.
+- **Then rename:** tick *Then add the files to the rename list* to load the result straight into the preview.
+- A folder with only empty subfolders? The same window offers to remove them.
+
+![Flatten a folder: preview of every move](docs/screenshots/flatten.png)
 
 ## Regular expressions (RegEx)
 

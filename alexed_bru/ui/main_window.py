@@ -206,6 +206,8 @@ class MainWindow(QMainWindow):
         self.presets_menu.aboutToShow.connect(self._fill_presets_menu)
         presets_btn.setMenu(self.presets_menu)
         lay.addWidget(presets_btn)
+        button("Flatten", "Move every file from a folder's subfolders up into it and remove the "
+               "emptied subfolders (preview first, undo from History)", self.flatten_folder)
         button("Duplicates", "Find files in the list with identical content and set the extra "
                "copies aside", self.find_duplicates)
         button("History", "Applied renames: undo or redo past batches (Ctrl+H)", self.show_history)
@@ -474,6 +476,18 @@ class MainWindow(QMainWindow):
         gone = {path_key(p) for p in paths}
         self.model.remove_rows(n for n, item in enumerate(self.model.items) if path_key(item.path) in gone)
         self.store.invalidate(paths)
+
+    def flatten_folder(self, folder: Path | None = None) -> None:
+        if folder is None and self.model.items:
+            try:  # the folder the listed files share
+                folder = Path(os.path.commonpath([str(i.folder) for i in self.model.items]))
+            except ValueError:  # different drives
+                folder = None
+        from alexed_bru.ui.flatten_dialog import FlattenDialog  # loaded on demand: startup cost
+        dlg = FlattenDialog(self, folder)
+        if folder is None:
+            dlg.choose_folder()
+        dlg.exec()
 
     def find_duplicates(self) -> None:
         if not self.model.items:
