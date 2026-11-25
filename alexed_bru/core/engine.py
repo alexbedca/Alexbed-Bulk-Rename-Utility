@@ -68,7 +68,7 @@ class RenameEngine:
                   overrides: Mapping[Path | str, str] | None = None) -> list[FileItem]:
         """FileItems for paths; `overrides` maps a path to a hand-typed new name."""
         by_key = {_key(p): name for p, name in (overrides or {}).items()}
-        return [FileItem(Path(p), manual=by_key.get(_key(p)) or None) for p in paths]
+        return [FileItem(Path(p), manual=by_key.get(_key(p)) or None, is_dir=Path(p).is_dir()) for p in paths]
 
     def preview(self, paths: Iterable[Path | str],
                 overrides: Mapping[Path | str, str] | None = None) -> list[PreviewRow]:

@@ -1,6 +1,7 @@
 # Copyright (C) 2026 Alexander Bediako
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Small pure-Python tag readers for Matroska (MKV/WebM) and AVI (RIFF). No external tools.
+"""Small pure-Python tag readers for Matroska (MKV/WebM), AVI (RIFF) and FLV, plus WMV frame
+size (mutagen reads WMV's tags). No external tools.
 
 Both return the same keys as the MP4 reader (title, artist, year, date, genre, comment, show,
 season, episode, track, duration, seconds, width, height) or {} for anything they can't read.
@@ -346,7 +347,7 @@ def _finish(out: dict) -> dict:
             out[key] = int(m.group(1)) if m else None
     seconds = out.pop("seconds_f", None)
     if seconds and 0 < seconds < 10 * 365 * 86400:
-        total = int(seconds)
+        total = int(seconds + 0.001)  # whole seconds, as for MP4; 2.9999 s (WMV rounding error) is 3
         h, rem = divmod(total, 3600)
         m, s = divmod(rem, 60)
         out["duration"] = f"{h}.{m:02d}.{s:02d}" if h else f"{m}.{s:02d}"
@@ -367,3 +368,132 @@ def _parse_date(text: str) -> datetime | None:
         return datetime.strptime(text, "%a %b %d %H:%M:%S %Y")
     except ValueError:
         return None
+
+
+# ---------------------------------------------------------------------- FLV (Flash video)
+def read_flv(path: Path) -> dict:
+    """Title, artist, date, duration and size from an FLV file's onMetaData ({} if it isn't one)."""
+    with open(path, "rb") as fh:
+        return flv_tags(fh, os.fstat(fh.fileno()).st_size)
+
+
+def flv_tags(fh: BinaryIO, size: int) -> dict:
+    """read_flv on an open binary file. Only the first script tag is read (it sits right after the
+    9-byte header), never the video."""
+    head = fh.read(9)
+    if len(head) < 9 or head[:3] != b"FLV":
+        return {}
+    fh.seek(struct.unpack(">I", head[5:9])[0] + 4)   # header, then PreviousTagSize0
+    tag = fh.read(11)
+    if len(tag) < 11 or tag[0] != 18:                # 18: script data
+        return {}
+    length = int.from_bytes(tag[1:4], "big")
+    if length > min(size, 1 << 20):
+        return {}
+    reader = _Amf(fh.read(length))
+    if reader.value() != "onMetaData":
+        return {}
+    meta = reader.value()
+    if not isinstance(meta, dict):
+        return {}
+    out: dict = {}
+    for key, name in (("title", "title"), ("artist", "artist"), ("author", "artist"), ("album", "album"),
+                      ("genre", "genre"), ("comment", "comment"), ("date", "date_raw"), ("year", "date_raw"),
+                      ("creationdate", "date_raw"), ("track", "track")):
+        value = meta.get(key)
+        if isinstance(value, str) and value.strip() and name not in out:
+            out[name] = value.strip()
+    if isinstance(meta.get("duration"), float) and meta["duration"] > 0:
+        out["seconds_f"] = meta["duration"]
+    w, h = meta.get("width"), meta.get("height")
+    if isinstance(w, float) and isinstance(h, float) and 0 < w < 100000 and 0 < h < 100000:
+        out["width"], out["height"] = int(w), int(h)
+    return _finish(out)
+
+
+class _Amf:
+    """Just enough AMF0 to read FLV's onMetaData (numbers, booleans, strings, objects, arrays)."""
+
+    def __init__(self, data: bytes) -> None:
+        self.data, self.pos, self.depth = data, 0, 0
+
+    def _take(self, n: int) -> bytes:
+        if self.pos + n > len(self.data):
+            raise ValueError("cut off")
+        chunk = self.data[self.pos:self.pos + n]
+        self.pos += n
+        return chunk
+
+    def _string(self, long: bool = False) -> str:
+        n = struct.unpack(">I" if long else ">H", self._take(4 if long else 2))[0]
+        return self._take(n).decode("utf-8", "replace")
+
+    def _props(self) -> dict:
+        out: dict = {}
+        for _ in range(4096):
+            key = self._string()
+            if key == "" and self.data[self.pos:self.pos + 1] == b"\x09":
+                self.pos += 1
+                return out
+            out[key.lower()] = self.value()
+        raise ValueError("too many properties")
+
+    def value(self):
+        self.depth += 1
+        if self.depth > 16:
+            raise ValueError("nested too deep")
+        try:
+            kind = self._take(1)[0]
+            if kind == 0:
+                return struct.unpack(">d", self._take(8))[0]
+            if kind == 1:
+                return self._take(1) != b"\x00"
+            if kind == 2:
+                return self._string()
+            if kind == 3:
+                return self._props()
+            if kind == 8:
+                self._take(4)  # approximate count; the end marker decides
+                return self._props()
+            if kind == 10:
+                count = struct.unpack(">I", self._take(4))[0]
+                if count > 100000:
+                    raise ValueError("array too long")
+                return [self.value() for _ in range(count)]
+            if kind == 11:
+                self._take(10)
+                return None
+            if kind == 12:
+                return self._string(long=True)
+            if kind in (5, 6):
+                return None
+            raise ValueError(f"AMF type {kind}")
+        finally:
+            self.depth -= 1
+
+
+# ---------------------------------------------------------------------- WMV / ASF frame size
+_ASF_HEADER = bytes.fromhex("3026B2758E66CF11A6D900AA0062CE6C")
+_ASF_STREAM = bytes.fromhex("9107DCB7B7A9CF118EE600C00C205365")
+_ASF_VIDEO = bytes.fromhex("C0EF19BC4D5BCF11A8FD00805F5C442B")
+
+
+def asf_dimensions(fh: BinaryIO) -> tuple[int, int] | None:
+    """Width and height of the first video stream in an ASF/WMV header (mutagen reads the tags)."""
+    head = fh.read(30)
+    if len(head) < 30 or head[:16] != _ASF_HEADER:
+        return None
+    count = struct.unpack("<I", head[24:28])[0]
+    for _ in range(min(count, 256)):
+        obj = fh.read(24)
+        if len(obj) < 24:
+            return None
+        size = struct.unpack("<Q", obj[16:24])[0]
+        if size < 24 or size > 1 << 24:
+            return None
+        body = fh.read(size - 24)
+        if obj[:16] == _ASF_STREAM and len(body) >= 54 + 8 and body[:16] == _ASF_VIDEO:
+            w, h = struct.unpack("<II", body[54:62])   # after 54 bytes of stream properties
+            if 0 < w < 100000 and 0 < h < 100000:
+                return w, h
+    return None

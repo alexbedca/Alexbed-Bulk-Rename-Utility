@@ -29,8 +29,12 @@ Options: levels (all / first), clash naming (number / folder name), leave `_Dupl
 Folder links are never followed. Ideas for later: only some file types (e.g. only audio), and a
 *Sort into subfolders* mode (below) as its reverse.
 
-### ☐ Folder renaming mode
-Rename folders themselves, not only the files in them.
+### ☑ Folder renaming mode (v1.5.0)
+Done: a *Files / Folders* switch above the preview. `core/transaction._layers` orders a batch from the paths
+alone (inside folders first; when undoing, parents back first), runs the layers one after another and puts
+earlier layers back if a later one fails. `where_now` moves listed rows with their renamed folder. The
+confirmation warns about paths that a longer name pushes past 260 characters. Mixed batches (folders and
+files together) are not offered: the list holds one kind. Original plan:
 - **Ordering:** rename deepest folders first, so a parent's new path never invalidates a child's queued
   operation; or plan everything on original paths and let the transaction order steps bottom-up.
 - **Mixed batches:** a folder and files inside it in one batch: compute the files' final paths from the
@@ -99,7 +103,9 @@ drag-to-reorder rows.
 
 ## Phase 3: Broader media support (v1.4.0)
 
-### ☑ MKV / WebM / AVI tags (v1.4.0)
+### ☑ MKV / WebM / AVI tags (v1.4.0), WMV / FLV (v1.5.0)
+v1.5.0 adds WMV (tags through mutagen's ASF reader, frame size from the ASF header) and FLV (`onMetaData`
+through a small AMF0 reader). TS has no standard title/artist tags, so it isn't read.
 Done in `skills/metadata/containers.py` (pure Python, a few hundred lines; no new dependency). It reads the
 Matroska Info, Tracks and Tags elements (following the SeekHead to Tags written after the video) and the AVI
 `avih` header and `LIST INFO` chunk. Tags feed `<title>`, `<artist>`, `<year>`, `<date>`, `<show>`,

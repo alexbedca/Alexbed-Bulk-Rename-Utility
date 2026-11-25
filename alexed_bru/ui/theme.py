@@ -75,6 +75,8 @@ QPushButton#Primary:hover {{
 QPushButton#Primary:disabled {{ background: {C.SURFACE_3}; color: {C.FAINT}; }}
 QToolButton#Flat, QPushButton#Flat {{ background: transparent; border: none; padding: 4px 6px; }}
 QToolButton#Flat:hover, QPushButton#Flat:hover {{ background: {C.SURFACE_3}; }}
+QPushButton#Segment {{ padding: 5px 12px; border-radius: 7px; color: {C.DIM}; }}
+QPushButton#Segment:checked {{ background: {C.ACCENT}; border-color: {C.ACCENT}; color: white; font-weight: 600; }}
 
 QLineEdit, QSpinBox, QComboBox {{
     background: {C.BG}; border: 1px solid {C.BORDER}; border-radius: 7px;

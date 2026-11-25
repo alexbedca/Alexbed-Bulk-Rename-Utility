@@ -93,7 +93,8 @@ def test_empty_state_and_scan(app, win, tmp_path):
     assert win.grid_stack.currentIndex() == 0  # drop hint
     win.recursive.setChecked(False)
     win.add_paths([lib])  # top folder holds only subfolders
-    assert pump(app, lambda: win.status_text.text().startswith("Added"))
+    # wait for the scan itself (its "Added…" message can be replaced by the preview's at once)
+    assert pump(app, lambda: not win.progress.isVisible())
     assert win.model.items == [] and win.grid_stack.currentIndex() == 0
     load(app, win, lib / "A", recursive=False)
     assert [i.name for i in win.model.items] == ["01 one.txt", "02 two.txt"]

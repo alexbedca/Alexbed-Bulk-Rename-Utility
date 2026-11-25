@@ -367,15 +367,22 @@ class VideoProvider(MetadataProvider):
     namespace = "video"
     label = "Video"
     MATROSKA = frozenset({"mkv", "mk3d", "webm"})
-    extensions = frozenset({"mp4", "m4v", "mov", "3gp", "3g2", "avi"}) | MATROSKA
+    extensions = frozenset({"mp4", "m4v", "mov", "3gp", "3g2", "avi", "flv", "wmv"}) | MATROSKA
 
     def read(self, path: Path) -> MetaDict:
         ext = path.suffix[1:].lower()
-        if ext in self.MATROSKA or ext == "avi":
-            from alexed_bru.skills.metadata.containers import read_avi, read_matroska
+        if ext in self.MATROSKA or ext in ("avi", "flv", "wmv"):
+            from alexed_bru.skills.metadata import containers
             try:
-                data = read_matroska(path) if ext in self.MATROSKA else read_avi(path)
-            except (ValueError, struct_error, OverflowError, MemoryError):
+                if ext in self.MATROSKA:
+                    data = containers.read_matroska(path)
+                elif ext == "avi":
+                    data = containers.read_avi(path)
+                elif ext == "flv":
+                    data = containers.read_flv(path)
+                else:
+                    data = _wmv_tags(path)
+            except (ValueError, struct_error, OverflowError, MemoryError, UnicodeError):
                 data = {}  # corrupt or cut off: no tags (OSError still reaches the store, as for MP4)
             if data.get("width") and data.get("height"):
                 w, h = data["width"], data["height"]
@@ -423,6 +430,39 @@ class VideoProvider(MetadataProvider):
             data.update(width=w, height=h, resolution=f"{w}x{h}", quality=_quality(w, h))
         return {k: (str(v).strip() if isinstance(v, str) else v) for k, v in data.items()
                 if v not in (None, "")}
+
+
+def _wmv_tags(path: Path) -> MetaDict:
+    """WMV (ASF): tags through mutagen, frame size from the header."""
+    from mutagen.asf import ASF, error as asf_error
+
+    from alexed_bru.skills.metadata import containers
+
+    data: MetaDict = {}
+    try:
+        asf = ASF(path)
+    except (asf_error, ValueError, struct_error):
+        asf = None
+    if asf is not None:
+        tags = asf.tags or {}
+
+        def tag(*keys: str) -> str:
+            for key in keys:
+                values = tags.get(key)
+                if values and str(values[0]).strip():
+                    return str(values[0]).strip()
+            return ""
+
+        raw = {"title": tag("Title", "title"), "artist": tag("Author", "WM/AlbumArtist", "artist"),
+               "album": tag("WM/AlbumTitle"), "genre": tag("WM/Genre"), "comment": tag("Description"),
+               "date_raw": tag("WM/Year", "date", "WM/OriginalReleaseYear"), "track": tag("WM/TrackNumber"),
+               "seconds_f": getattr(asf.info, "length", 0) or None}
+        data = {k: v for k, v in raw.items() if v not in (None, "")}
+    with path.open("rb") as fh:
+        dims = containers.asf_dimensions(fh)
+    if dims:
+        data["width"], data["height"] = dims
+    return containers._finish(data)
 
 
 def _quality(w: int, h: int) -> str:

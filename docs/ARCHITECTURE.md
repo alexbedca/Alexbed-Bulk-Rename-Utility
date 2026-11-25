@@ -63,6 +63,7 @@ tests/                   pytest suite for engine, validation, transactions
 2. **Validation gate.** Only rows with `OK` or `WARNING` status are applied. Rows with errors are skipped and listed.
 3. **Two-phase commit.** Every source is first renamed to `.~abru-<uuid>.tmp` in its own folder, then to its final name. This handles swaps, cycles and case-only renames safely.
 4. **Rollback.** If any step fails, the completed steps are undone in reverse order and the batch is reported as failed. The disk ends up as it was before.
+   Folder batches where one folder is inside another run in *layers* (`transaction._layers`, worked out from the paths: inside folders first, and parents first when undoing); a failure in a later layer puts the earlier layers back too.
 5. **Journal.** Successful batches are appended to `history.json` in the portable data folder. Undo applies the inverse batch through the same transaction engine, after checking that each file is still where we left it.
 
 ## Extending (Skills and plugins)

@@ -10,8 +10,10 @@ $py = ".venv\Scripts\python.exe"
 & $py -m pytest -q
 if ($LASTEXITCODE -ne 0) { throw "Tests failed; not building." }
 
-& $py -m PyInstaller `
-    --noconfirm --clean --onefile --windowed `
+# 1. write the build recipe (spec), 2. leave out Qt/Pillow parts the app never uses
+#    (tools\slim_spec.py: faster start-up, as a one-file exe unpacks everything at each start), 3. build
+& $py -m PyInstaller.utils.cliutils.makespec `
+    --onefile --windowed `
     --name AlexbedBulkRename `
     --icon assets\branding\app.ico `
     --add-data "assets\branding\app.ico;assets\branding" `
@@ -27,6 +29,10 @@ if ($LASTEXITCODE -ne 0) { throw "Tests failed; not building." }
     --exclude-module PySide6.Qt3DCore `
     --exclude-module PySide6.QtMultimedia `
     run.py
+if ($LASTEXITCODE -ne 0) { throw "Writing the spec failed." }
+& $py tools\slim_spec.py AlexbedBulkRename.spec
+if ($LASTEXITCODE -ne 0) { throw "Slimming the spec failed." }
+& $py -m PyInstaller --noconfirm --clean AlexbedBulkRename.spec
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed." }
 
 $exe = Get-Item dist\AlexbedBulkRename.exe

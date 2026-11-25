@@ -21,6 +21,8 @@ It's a single `.exe` for Windows 10/11, with no installer and no registry footpr
 - **Fix single files by hand:** double-click a new name to type your own.
 - **Find duplicate files** by content, not by name, and set the extra copies aside safely.
 - **Flatten folders:** bring every file up out of its subfolders into one folder, with a preview and undo.
+- **Rename folders too:** switch the preview to *Folders* and use the same rules on folder names, even a
+  folder and its subfolders in one go.
 
 ## How-to video
 
@@ -153,6 +155,23 @@ spread over artist and album folders.
 
 ![Flatten a folder: preview of every move](docs/screenshots/flatten.png)
 
+## Rename folders
+
+Click **Folders** above the preview to rename folders instead of files. Every rule works the same way.
+
+- **+ Folder** lists the subfolders of the folder you pick (all levels with *Include subfolders*, otherwise
+  only the first level). **Dropping folders** onto the window (or Send To) lists those folders themselves.
+- **Folders inside folders:** an artist folder and its album folders can be renamed in one batch. The app
+  renames the inside ones first and the outer ones after, and undo runs the other way round.
+- **All or nothing:** if a file inside one of the folders is open in another program, Windows refuses and
+  nothing is renamed; folders already renamed in that batch are put back.
+- **Undo from History**, like any other batch.
+- **Long paths:** if a longer folder name would push something inside it past Windows' 260-character limit,
+  the confirmation warns you (some programs can't open such files).
+- Folder names have no "extension": `Vol. 2.0` is all name. Drive roots, folder links (junctions), Windows'
+  own folders such as `$RECYCLE.BIN`, and the folder holding this app or its data are never renamed.
+- Find duplicates is for files, so it's switched off in folder mode. Switching mode clears the list.
+
 ## Regular expressions (RegEx)
 
 New to RegEx? Open a **RegEx Replace** rule:
@@ -203,13 +222,14 @@ Every rule can target the name, the extension, or both, and works on any file ty
 |---|---|---|
 | Audio | MP3 (ID3v1/v2), FLAC, OGG/Opus, M4A/AAC, WMA, WAV, AIFF, APE, WavPack, DSF | artist, album, title, track, disc, year, genre, bitrate, duration |
 | Video | MP4, M4V, MOV, 3GP (iTunes tags, QuickTime atoms, iPhone `mdta` keys) | title, show, season, episode, date recorded, make/model, resolution, quality (1080p) |
-| Video | MKV, WebM (Matroska tags), AVI (RIFF `INFO`) | title, artist, year/date, genre, show, season, episode/track, duration, resolution, quality |
+| Video | MKV, WebM (Matroska tags), AVI (RIFF `INFO`), WMV (ASF tags), FLV (`onMetaData`) | title, artist, year/date, genre, show, season, episode/track, duration, resolution, quality |
 | Documents | PDF, DOCX/XLSX/PPTX (+ macro variants) | title, author, subject, created, modified, pages |
 | Images | JPEG, TIFF, PNG, WebP, HEIC*, DNG* (EXIF) | date taken, camera make/model, width/height, ISO |
 | Any file | system | created, modified, size, parent/grandparent folder |
 
-\* if Pillow can open it. MKV, WebM and AVI are read by a small built-in reader that only looks at the file's
-headers (never the video itself), so even large files are quick. A damaged or cut-off file simply gives no tags.
+\* if Pillow can open it. MKV, WebM, AVI, WMV and FLV are read by small built-in readers that only look at the
+file's headers (never the video itself), so even large files are quick. A damaged or cut-off file simply gives
+no tags. TS recordings carry no title or artist tags, so only system tags apply to them.
 
 ## Tags
 

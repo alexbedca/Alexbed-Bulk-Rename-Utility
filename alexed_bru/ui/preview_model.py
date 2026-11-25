@@ -56,6 +56,11 @@ def path_key(path: Path) -> str:
     return os.path.normcase(os.path.normpath(str(path)))
 
 
+def keyed_items(paths: Iterable[Path], is_dir: bool = False) -> list[tuple[str, FileItem]]:
+    """(path_key, FileItem) pairs; slow for 10k+ paths, so background jobs build them."""
+    return [(path_key(p), FileItem(p, is_dir=is_dir)) for p in paths]
+
+
 class RenameModel(QAbstractTableModel):
     includeChanged = Signal()
     itemsChanged = Signal()
@@ -77,12 +82,15 @@ class RenameModel(QAbstractTableModel):
 
     # ---- data management ----------------------------------------------------
     def add_paths(self, paths: Iterable[Path]) -> int:
+        return self.add_items(keyed_items(paths))
+
+    def add_items(self, keyed: Iterable[tuple[str, FileItem]]) -> int:
+        """Add prepared (path_key, FileItem) pairs (built in a background job); skips ones listed."""
         new = []
-        for p in paths:
-            key = path_key(p)
+        for key, item in keyed:
             if key not in self._keys:
                 self._keys.add(key)
-                new.append(FileItem(p))
+                new.append(item)
         if new:
             first = len(self.items)
             self.beginInsertRows(QModelIndex(), first, first + len(new) - 1)
@@ -124,17 +132,21 @@ class RenameModel(QAbstractTableModel):
         if self.items:
             self.dataChanged.emit(self.index(0, COL_ORIGINAL), self.index(len(self.items) - 1, COL_ORIGINAL))
 
-    def relocate(self, mapping: dict[str, Path], mark_success: bool) -> None:
+    def relocate(self, mapping: dict[str, Path], mark_success: bool, renamed: set[str] | None = None) -> None:
         """Point items at their new paths after a rename (or rollback).
 
-        ``mapping`` is keyed by ``path_key(old_path)``.
+        ``mapping`` is keyed by ``path_key(old_path)``. ``renamed``: the keys that were renamed
+        themselves; others in ``mapping`` only moved with a renamed folder (their name is the same).
         """
         for n, item in enumerate(self.items):
-            new_path = mapping.get(path_key(item.path))
+            key = path_key(item.path)
+            new_path = mapping.get(key)
             if new_path is None:
                 continue
             old_name = item.name
             item.path = new_path
+            if renamed is not None and key not in renamed:
+                continue  # inside a renamed folder: same name, same status
             item.manual = None  # the file now has its new name; the typed one is used up
             if mark_success:
                 self.proposals[n] = Proposal(new_path.name, Status.SUCCESS, ["Renamed"], previous=old_name)
@@ -143,7 +155,7 @@ class RenameModel(QAbstractTableModel):
 
     def snapshot(self) -> list[FileItem]:
         """Thread-safe copy for background jobs."""
-        return [FileItem(i.path, i.include, i.manual) for i in self.items]
+        return [i.copy() for i in self.items]
 
     def reset_manual(self, rows: Iterable[int]) -> None:
         """Forget hand-typed names; the rules decide again."""
@@ -284,6 +296,9 @@ class RenameModel(QAbstractTableModel):
             return prop.new_name
         elif role == Qt.CheckStateRole and col == COL_INCLUDE:
             return Qt.Checked if item.include else Qt.Unchecked
+        elif role == Qt.DecorationRole and col == COL_ORIGINAL and item.is_dir:
+            from alexed_bru.ui.icons import icon
+            return icon("folder")
         elif role == Qt.DecorationRole and col == COL_NEW and item.include and item.manual:
             from alexed_bru.ui.icons import icon
             return icon("edit")
@@ -427,7 +442,7 @@ def removed_spans(old: str, new: str) -> list[tuple[int, int, int]]:
 class FilterProxy(QSortFilterProxyModel):
     """Text + status filtering. Sorting is delegated to the source model."""
 
-    MODES = [("all", "All files"), ("changed", "Will change"), ("problems", "Problems"),
+    MODES = [("all", "Show all"), ("changed", "Will change"), ("problems", "Problems"),
              ("unchanged", "Unchanged"), ("excluded", "Excluded")]
 
     def __init__(self, parent=None) -> None:

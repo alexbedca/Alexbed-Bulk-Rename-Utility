@@ -30,7 +30,7 @@ from alexed_bru.skills.metadata import PROVIDERS, MetadataStore
 from alexed_bru.skills.rules import RegexRule, ReplaceRule, compile_regex
 from alexed_bru.ui.preview_model import (COL_FOLDER, COL_INCLUDE, COL_INFO, COL_NEW, COL_ORIGINAL,
                                          COL_STATUS, FilterProxy, HighlightDelegate, RenameModel,
-                                         natural_name, path_key)
+                                         keyed_items, natural_name, path_key)
 from alexed_bru.ui.icons import icon
 from alexed_bru.ui.rule_editor import RuleEditor, RuleRow, RuleStack, menu_text, rules_menu
 from alexed_bru.ui.theme import ADDED_COLOUR, REMOVED_COLOUR, C, dark_title_bar
@@ -57,6 +57,63 @@ def scan(paths: list[Path], recursive: bool, cancelled) -> list[Path]:
             else:
                 out.extend(sorted((c for c in p.iterdir() if c.is_file()), key=lambda c: natural_name(c.name)))
     return [p for p in out if not p.name.startswith(SKIP_PREFIX)]
+
+
+SKIP_FOLDERS = {"$recycle.bin", "system volume information", "$windows.~bt", "$windows.~ws", "config.msi"}
+
+
+def _plain_folder(path: Path) -> bool:
+    """A folder we may list for renaming: not a link/junction, not Windows' own system folders."""
+    try:
+        if path.is_symlink() or path.is_junction():
+            return False
+    except OSError:
+        return False
+    return path.name.lower() not in SKIP_FOLDERS and not path.name.startswith(SKIP_PREFIX)
+
+
+def scan_folders(paths: list[Path], contents: bool, recursive: bool, cancelled,
+                 progress=None) -> list[Path]:
+    """Folders to rename. `contents`: the subfolders of each path (all levels with `recursive`),
+    as when a folder is picked with + Folder; otherwise the dropped folders themselves."""
+    out: list[Path] = []
+    for p in paths:
+        if not p.is_dir():
+            continue  # files are left out in folder mode
+        if not contents:
+            if _plain_folder(p) and p.parent != p:  # never a drive root
+                out.append(p)
+            continue
+        stack = [p]          # depth first, so each folder is followed by its own subfolders
+        while stack:
+            if cancelled():
+                return out
+            here = stack.pop()
+            if here != p:
+                out.append(here)
+                if progress and len(out) % 500 == 0:
+                    progress(len(out), 0)
+            if here != p and not recursive:
+                continue
+            try:
+                # the listing already says what is a folder, a link or a junction: no extra disk checks
+                with os.scandir(here) as entries:
+                    subs = sorted((e.name for e in entries
+                                   if e.is_dir(follow_symlinks=False) and not e.is_symlink()
+                                   and not e.is_junction() and e.name.lower() not in SKIP_FOLDERS
+                                   and not e.name.startswith(SKIP_PREFIX)), key=_natural)
+            except OSError:
+                continue
+            stack.extend(reversed([here / d for d in subs]))
+    return out
+
+
+def _holds_app_data(folder: Path) -> bool:
+    """True if renaming `folder` would move this app's exe or its data folder."""
+    from alexed_bru.paths import app_root
+    mine = [os.path.normcase(os.path.abspath(str(p))) for p in (app_root(), data_dir())]
+    f = os.path.normcase(os.path.abspath(str(folder)))
+    return any(m == f or m.startswith(f + os.sep) for m in mine)
 
 
 def _rgba(hex_colour: str, alpha: float) -> str:
@@ -100,6 +157,9 @@ class MainWindow(QMainWindow):
         self._gen = 0
         self._preview_job: Job | None = None
         self._apply_when_ready = False
+        self._pending_rows: list = []  # scanned rows still being added (big folders, in chunks)
+        self._list_id = 0              # bumped by Clear and mode switches: late scan results are dropped
+        self._added = self._skipped = 0
         self._undo: list[str] = []
         self._redo: list[str] = []
         self._last_state = "[]"
@@ -210,8 +270,8 @@ class MainWindow(QMainWindow):
         lay.addWidget(presets_btn)
         button("Flatten", "Move every file from a folder's subfolders up into it and remove the "
                "emptied subfolders (preview first, undo from History)", lambda: self.flatten_folder())
-        button("Duplicates", "Find files in the list with identical content and set the extra "
-               "copies aside", self.find_duplicates)
+        self.dup_btn = button("Duplicates", "Find files in the list with identical content and set the extra "
+                              "copies aside", self.find_duplicates)
         button("History", "Applied renames: undo or redo past batches (Ctrl+H)", self.show_history)
         more = QToolButton()
         more.setIcon(icon("more"))
@@ -383,10 +443,26 @@ class MainWindow(QMainWindow):
         bar = QHBoxLayout()
         bar.addWidget(section_title("Preview"))
         bar.addSpacing(12)
+        # Files / Folders: what the list holds and what gets renamed
+        self.mode_files = QPushButton("Files")
+        self.mode_folders = QPushButton("Folders")
+        self.mode_files.setToolTip("Rename files (the usual mode)")
+        self.mode_folders.setToolTip("Rename folders instead of files.\n+ Folder lists the subfolders of the "
+                                     "folder you pick (all levels with Include subfolders);\ndropped folders are "
+                                     "listed themselves. A folder and its subfolders can be renamed together.")
+        for b in (self.mode_files, self.mode_folders):
+            b.setCheckable(True)
+            b.setObjectName("Segment")
+            bar.addWidget(b)
+        self.mode_files.setChecked(True)
+        self.mode_files.clicked.connect(lambda: self.set_folder_mode(False))
+        self.mode_folders.clicked.connect(lambda: self.set_folder_mode(True))
+        bar.addSpacing(10)
         self.search = QLineEdit()
         self.search.setPlaceholderText("Filter by name…")
         self.search.setClearButtonEnabled(True)
         self.search.setMaximumWidth(260)
+        self.search.setMinimumWidth(130)  # keep it readable next to the Files / Folders switch
         self.filter_mode = QComboBox()
         for key, label in FilterProxy.MODES:
             self.filter_mode.addItem(label, key)
@@ -479,6 +555,7 @@ class MainWindow(QMainWindow):
         self.drop_hint = QLabel("Drop files or folders here\n\n"
                                 "or use  + Files  /  + Folder  above.\n"
                                 "Nothing on disk changes until you press  Rename files.")
+        self._folder_mode_was = False
         self.drop_hint.setObjectName("DropHint")
         self.drop_hint.setAlignment(Qt.AlignCenter)
         self.grid_stack = QStackedWidget()
@@ -545,25 +622,92 @@ class MainWindow(QMainWindow):
             self.add_paths([Path(f) for f in files])
 
     def add_folder_dialog(self) -> None:
-        folder = QFileDialog.getExistingDirectory(self, "Add folder", self.settings.get("last_dir", ""))
+        title = "Rename the subfolders of" if self.folder_mode else "Add folder"
+        folder = QFileDialog.getExistingDirectory(self, title, self.settings.get("last_dir", ""))
         if folder:
             self.settings["last_dir"] = folder
-            self.add_paths([Path(folder)])
+            self.add_paths([Path(folder)], contents=True)
 
-    def add_paths(self, paths: list[Path]) -> None:
+    @property
+    def folder_mode(self) -> bool:
+        return self.mode_folders.isChecked()
+
+    @property
+    def noun(self) -> str:
+        return "folder" if self.folder_mode else "file"
+
+    def set_folder_mode(self, on: bool) -> None:
+        """Switch between renaming files and renaming folders (the list holds one kind)."""
+        self.mode_files.setChecked(not on)
+        self.mode_folders.setChecked(on)
+        if on == getattr(self, "_folder_mode_was", False):
+            return
+        if self.model.items and QMessageBox.question(
+                self, APP_NAME, f"Switch to renaming {'folders' if on else 'files'}?\n\n"
+                f"The list is cleared; your rules stay.") != QMessageBox.Yes:
+            self.mode_files.setChecked(on)
+            self.mode_folders.setChecked(not on)
+            return
+        self._folder_mode_was = on
+        self.clear_files()
+        self.drop_hint.setText(self._drop_text())
+        self.dup_btn.setEnabled(not on)
+        self.status_text.setText("Folder mode: + Folder lists the subfolders of a folder; drop folders to "
+                                 "rename them themselves." if on else "File mode.")
+        self._update_counts()
+
+    def _drop_text(self) -> str:
+        if self.folder_mode:
+            return ("Drop folders here to rename them\n\n"
+                    "or use  + Folder  to list the subfolders of a folder.\n"
+                    "Nothing on disk changes until you press  Rename folders.")
+        return ("Drop files or folders here\n\n"
+                "or use  + Files  /  + Folder  above.\n"
+                "Nothing on disk changes until you press  Rename files.")
+
+    def add_paths(self, paths: list[Path], contents: bool = False) -> None:
         recursive = self.recursive.isChecked()
         self._busy("Scanning…")
-        job = Job(0, lambda _p, cancelled: scan(paths, recursive, cancelled))
-        job.signals.result.connect(lambda _g, found: self._on_scanned(found))
+        # Scanning and building the rows both run in the background: the window stays responsive.
+        if self.folder_mode:
+            job = Job(0, lambda progress, cancelled: keyed_items(
+                scan_folders(paths, contents, recursive, cancelled, progress), is_dir=True))
+            job.signals.progress.connect(
+                lambda _g, found, _t: self.status_text.setText(f"Scanning… {found:,} folders found"))
+        else:
+            job = Job(0, lambda _p, cancelled: keyed_items(scan(paths, recursive, cancelled)))
+        list_id = self._list_id
+        job.signals.result.connect(lambda _g, found: self._on_scanned(found, list_id))
         job.signals.error.connect(lambda _g, tb: self._job_error("Scanning failed", tb))
         self.runner.start(job)
 
-    def _on_scanned(self, found: list[Path]) -> None:
-        added = self.model.add_paths(found)
-        skipped = len(found) - added
-        self._idle(f"Added {added:,} file(s)" + (f" · {skipped:,} already listed" if skipped else ""))
+    ROW_CHUNK = 2500  # rows added per event-loop turn, so the window keeps drawing on big folders
+
+    def _on_scanned(self, found: list, list_id: int | None = None) -> None:
+        if list_id is not None and list_id != self._list_id:
+            self._idle("Scan skipped: the list was cleared or the mode changed meanwhile")
+            return
+        if not self._pending_rows:
+            self._added = self._skipped = 0
+        self._pending_rows.extend(found)
+        self._add_chunk()
+
+    def _add_chunk(self) -> None:
+        chunk = self._pending_rows[:self.ROW_CHUNK]
+        del self._pending_rows[:self.ROW_CHUNK]
+        added = self.model.add_items(chunk)
+        self._added += added
+        self._skipped += len(chunk) - added
+        if self._pending_rows:
+            self.status_text.setText(f"Adding {self.noun}s… {self._added:,}")
+            QTimer.singleShot(0, self._add_chunk)
+            return
+        self._idle(f"Added {self._added:,} {self.noun}(s)"
+                   + (f" · {self._skipped:,} already listed" if self._skipped else ""))
 
     def clear_files(self) -> None:
+        self._list_id += 1  # scans still running belong to the old list
+        self._pending_rows.clear()
         self.model.clear()
         self.store.invalidate()
 
@@ -890,7 +1034,7 @@ class MainWindow(QMainWindow):
         c = self.model.counts()
         total = len(self.model.items)
         pending = c[Status.PENDING] + c[Status.WARNING]
-        parts = [f"{total:,} files", f"<span style='color:{C.ACCENT_HI}'>{pending:,} to rename</span>"]
+        parts = [f"{total:,} {self.noun}s", f"<span style='color:{C.ACCENT_HI}'>{pending:,} to rename</span>"]
         if c[Status.WARNING]:
             parts.append(f"<span style='color:{C.WARN}'>{c[Status.WARNING]:,} warnings</span>")
         if c[Status.ERROR]:
@@ -900,8 +1044,8 @@ class MainWindow(QMainWindow):
         self.counts.setText("  ·  ".join(parts))
         self.legend.setVisible(pending > 0)
         self.apply_btn.setEnabled(pending > 0)
-        self.apply_btn.setText(f"Rename {pending:,} file{'s' if pending != 1 else ''}" if pending
-                               else "Rename files")
+        self.apply_btn.setText(f"Rename {pending:,} {self.noun}{'s' if pending != 1 else ''}" if pending
+                               else f"Rename {self.noun}s")
         if not self.progress.isVisible():
             self.status_text.setText("Preview up to date · nothing changes on disk until you apply"
                                      if total else "Ready")
@@ -976,15 +1120,29 @@ class MainWindow(QMainWindow):
         ops = RenameEngine.plan(self.model.items, self.model.proposals)
         if not ops:
             return
+        if self.folder_mode:
+            own = [op.src for op in ops if _holds_app_data(op.src)]
+            if own:
+                QMessageBox.warning(self, APP_NAME, f"“{own[0].name}” holds this app or its data folder, so "
+                                    "it can't be renamed while the app runs. Untick it and try again.")
+                return
         errors = self.model.counts()[Status.ERROR]
-        text = f"Rename {len(ops):,} file(s)?"
+        text = f"Rename {len(ops):,} {self.noun}(s)?"
         if errors:
-            text += f"\n\n{errors:,} file(s) with errors will be skipped."
+            text += f"\n\n{errors:,} {self.noun}(s) with errors will be skipped."
+        if self.folder_mode:
+            from alexed_bru.core.transaction import MAX_PATH, too_long_after
+            long_ones = too_long_after(ops)
+            if long_ones:
+                text += (f"\n\nWarning: inside {len(long_ones):,} folder(s), such as “{long_ones[0].name}”, some "
+                         f"paths will be {MAX_PATH} characters or longer. Some programs can't open such files.")
+            text += ("\n\nIf a file inside one of these folders is open in another program, Windows refuses "
+                     "and nothing is renamed.")
         text += "\n\nYou can undo this later from History."
         if QMessageBox.question(self, APP_NAME, text) != QMessageBox.Yes:
             return
         label = "; ".join(r.summary() for r in self.rules if r.enabled)[:160] or "Rename"
-        dlg = QProgressDialog("Renaming files…", None, 0, len(ops), self)
+        dlg = QProgressDialog(f"Renaming {self.noun}s…", None, 0, len(ops), self)
         dlg.setWindowModality(Qt.WindowModal)
         dlg.setMinimumDuration(400)
         dlg.setWindowTitle(APP_NAME)
@@ -1005,10 +1163,19 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, APP_NAME, msg)
             self.schedule_preview()
             return
-        mapping = {path_key(op.src): op.dst for op in result.ops}
-        self.model.relocate(mapping, mark_success=True)
+        self.model.relocate(self._moves(result), mark_success=True,
+                            renamed={path_key(op.src) for op in result.ops})
         self._update_counts()
-        self.status_text.setText(f"Renamed {len(result.ops):,} file(s). Undo any time from History.")
+        self.status_text.setText(f"Renamed {len(result.ops):,} {self.noun}(s). Undo any time from History.")
+
+    def _moves(self, result) -> dict[str, Path]:
+        """{path_key(listed path): where it is now} after a rename, undo or redo; rows inside a
+        renamed folder follow it."""
+        from alexed_bru.core.transaction import _key, where_now
+        paths = [i.path for i in self.model.items]
+        final = where_now(paths, result.ops)
+        # compare the text: Windows paths compare equal ignoring case, but "two" -> "TWO" is a rename
+        return {path_key(p): final[_key(p)] for p in paths if str(final.get(_key(p), p)) != str(p)}
 
     def _sync_more_menu(self) -> None:
         from alexed_bru.core import sendto
@@ -1038,7 +1205,7 @@ class MainWindow(QMainWindow):
                                 f"{result.error}\n\nNo files were changed.")
             return False
         ops = batch.rename_ops if redo else [o.inverse() for o in batch.rename_ops]
-        self.model.relocate({path_key(o.src): o.dst for o in ops}, mark_success=False)
+        self.model.relocate(self._moves(result), mark_success=False)
         self.store.invalidate()
         self.schedule_preview()
         text = f"{'Re-applied' if redo else 'Rolled back'} {len(ops):,} file(s)"

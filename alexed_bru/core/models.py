@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import enum
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -28,11 +29,13 @@ class Status(enum.IntEnum):
 class FileItem:
     """One file in the batch. Derived name parts are cached (hot path for 10k+ files)."""
 
-    __slots__ = ("_path", "include", "manual", "name", "stem", "ext", "folder", "folder_key")
+    __slots__ = ("_path", "include", "manual", "name", "stem", "ext", "folder_key", "is_dir")
 
-    def __init__(self, path: Path, include: bool = True, manual: str | None = None) -> None:
+    def __init__(self, path: Path, include: bool = True, manual: str | None = None,
+                 is_dir: bool = False) -> None:
         self.include = include
         self.manual = manual  # a new name typed by hand: used instead of the rules
+        self.is_dir = is_dir  # a folder row (folder renaming mode): the whole name is the "stem"
         self.path = path
 
     @property
@@ -41,11 +44,22 @@ class FileItem:
 
     @path.setter
     def path(self, value: Path) -> None:
-        self._path = Path(value)
-        self.name = self._path.name
-        self.stem, self.ext = split_name(self.name)
-        self.folder = self._path.parent
-        self.folder_key = str(self.folder)
+        # Plain string splitting: pathlib's .name/.parent parse the path again and cost ~25 us
+        # each, which froze the window for a second when 20,000 files were added.
+        self._path = value if isinstance(value, Path) else Path(value)
+        self.folder_key, self.name = os.path.split(str(self._path))
+        self.stem, self.ext = (self.name, "") if self.is_dir else split_name(self.name)
+
+    @property
+    def folder(self) -> Path:
+        return Path(self.folder_key)
+
+    def copy(self) -> "FileItem":
+        """A copy for background jobs, without parsing the path again."""
+        twin = FileItem.__new__(FileItem)
+        for slot in FileItem.__slots__:
+            setattr(twin, slot, getattr(self, slot))
+        return twin
 
     def __repr__(self) -> str:
         return f"FileItem({str(self._path)!r}, include={self.include})"

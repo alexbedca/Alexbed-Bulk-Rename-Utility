@@ -14,6 +14,14 @@ from alexed_bru import APP_NAME, APP_VERSION
 from alexed_bru.paths import resource_path
 
 
+def _tune_gc() -> None:
+    """Fewer, shorter garbage-collection pauses: with 50,000 listed files a full collection froze the
+    window for up to 0.1-0.3 s. Objects made at start-up are set aside (they live until exit)."""
+    import gc
+    gc.freeze()
+    gc.set_threshold(20000, 50, 50)
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv if argv is None else argv
     # Privacy: the app never writes log files. Libraries that log (Pillow, mutagen...) go to a
@@ -65,6 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     server.filesReceived.connect(window.receive_files)
     if early:
         window.receive_files(early)
+    _tune_gc()
     # Files/folders passed on the command line (or dropped onto the exe).
     from pathlib import Path
     paths = [Path(a) for a in argv[1:] if Path(a).exists()]

@@ -20,7 +20,8 @@ Reads audio (mutagen), video (MP4/MOV atoms), EXIF (Pillow) and PDF/Office metad
   Card: `.venv\Scripts\python tools\make_social_preview.py` → `docs/social-preview.png` (shows the version), then
   upload it in repo Settings → Social preview via Claude in Chrome.
 - **No CI** (no `.github/` folder): tests only run locally.
-- **Known limits:** folders themselves are not renamed; video tags in other containers (WMV/FLV/TS) aren't read.
+- **Known limits:** TS video has no tags to read; a batch holds files or folders, not both; start-up is
+  dominated by Qt listing installed fonts (4-9 s on this PC with 9,223 font files, ~1-2 s on a typical PC).
 - **Roadmap:** `docs/ROADMAP.md` (v1.2.0+ in four phases, with safety notes per item). Update its status marks
   when a feature ships.
 - **Read first:** `README.md` (user view), `docs/ARCHITECTURE.md` (layout, data flow, safety model, how to add rules),
@@ -41,7 +42,8 @@ alexed_bru/skills/        rule base + registry (rules.py, plain-English summary(
 alexed_bru/ui/            main_window, preview_model (virtualised table + highlight delegate; New name editable),
                           rule_editor (+ From example panel), duplicates_dialog, flatten_dialog, single_instance (one window
                           via named mutex + QLocalServer), regex_help, workers, theme
-tests/                    pytest: engine, rules, metadata, media, containers (MKV/AVI), ui, large (10k, slow)
+tests/                    pytest: engine, rules, metadata, media, containers (MKV/AVI/FLV/WMV), folders, loading,
+                          ui, large (10k, slow)
 assets/branding, assets/ui  logo/icon, UI icons
 test_library/             sample messy files for manual testing (git-ignored)
 build.ps1                 venv + tests + PyInstaller -> dist\AlexbedBulkRename.exe
@@ -85,7 +87,13 @@ build.ps1                 venv + tests + PyInstaller -> dist\AlexbedBulkRename.e
   serialisation are automatic. New metadata: subclass `MetadataProvider` (namespace + extensions).
 - Tag values are sanitised (`AC/DC` → `AC-DC`), never a path separator.
 - Startup was cut from 15–18 s to 4–6 s on PCs with many fonts (commit c9f7cc5); keep an eye on startup cost when
-  adding UI.
+  adding UI. Qt's font list (6,674 families here) is the floor; starting it in a background thread was tried (2026-11-25) and gave no measurable gain in the exe.
+- Big folders: rows are built in the scan job (`keyed_items`), added in chunks of `ROW_CHUNK`, previews copy rows
+  with `FileItem.copy()`; `FileItem` splits paths with `os.path`, not pathlib (pathlib cost ~1 s per 20k files).
+  `ui/app._tune_gc` freezes start-up objects and raises the GC threshold (50k files froze up to 0.3 s).
+- Folder mode: `FileItem.is_dir` (no extension); nested folder renames go through `transaction._layers`;
+  window rows follow renamed folders via `transaction.where_now` (compare path *text*: Windows paths compare
+  equal ignoring case, which once hid case-only renames).
 - `dist/`, `*.spec`, `AlexbedBRU_data/`, `test_library/` and the release exe are git-ignored.
 - `tests/test_stress_and_locks.py` runs the real engine: a file held open by another process must roll back the
   whole batch (small and 100-file parallel/chained batches; Windows only). Its 10k test is marked slow.

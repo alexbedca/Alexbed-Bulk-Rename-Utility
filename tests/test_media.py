@@ -53,6 +53,8 @@ def media(tmp_path_factory):
                       album="Kind of Blue", track="1", date="1959"),
         "mkv": job(d / "movie.mkv", SMALL_VIDEO, title="Some Movie", artist="Jane Doe", date="2019-05-01"),
         "avi": job(d / "clip.avi", SMALL_VIDEO, "-c:v", "mpeg4", title="Home Video", artist="Dad", date="2004"),
+        "wmv": job(d / "show.wmv", SMALL_VIDEO, "-c:v", "wmv2", title="Pilot", artist="Night Shift", date="2021"),
+        "flv": job(d / "old.flv", SMALL_VIDEO, "-c:v", "flv1", title="Old Clip", artist="Mum", date="2008"),
         "ogg": job(d / "voice.ogg", AUDIO, "-c:a", "libvorbis", ARTIST="Narrator", TITLE="Chapter 1"),
     }
     # ffmpeg runs in parallel: the fast suite has a 15-second budget
@@ -108,6 +110,14 @@ def test_mkv_and_avi_made_by_ffmpeg(media):
     assert row.proposed == "Jane Doe - Some Movie (2019) [720p] 0.01.mkv"
     assert preview(media["avi"], "<year> <artist> - <title> <resolution>").proposed \
         == "2004 Dad - Home Video 1280x720.avi"
+
+
+@needs_ffmpeg
+def test_wmv_and_flv_made_by_ffmpeg(media):
+    assert preview(media["wmv"], "<artist> - <title> (<year>) [<quality>]").proposed \
+        == "Night Shift - Pilot (2021) [720p].wmv"
+    assert preview(media["flv"], "<year> <artist> - <title> <resolution>").proposed \
+        == "2008 Mum - Old Clip 1280x720.flv"
 
 
 # ---------------------------------------------------------------------------

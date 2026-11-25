@@ -18,6 +18,7 @@ separators or other illegal characters.
 """
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
@@ -134,7 +135,7 @@ def _builtin(head: str, fmt: str | None, ctx: "RuleContext") -> str:
     if head == "ext":
         return ctx.item.ext
     if head == "folder":
-        return ctx.item.folder.name
+        return os.path.basename(ctx.item.folder_key)
     if head == "num":
         return format_value(ctx.index + 1, fmt)
     if head == "fnum":

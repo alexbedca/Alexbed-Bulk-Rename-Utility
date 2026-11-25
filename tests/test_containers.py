@@ -186,3 +186,94 @@ def test_cut_off_and_damaged_files_never_raise(kind):
         bad = bytearray(good)
         bad[i] ^= 0xFF
         assert isinstance(read(bytes(bad)), dict)
+
+
+# ---------------------------------------------------------------- FLV and WMV (ASF)
+def amf_str(text: str) -> bytes:
+    raw = text.encode("utf-8")
+    return struct.pack(">H", len(raw)) + raw
+
+
+def amf_props(**props) -> bytes:
+    body = b""
+    for key, value in props.items():
+        body += amf_str(key)
+        if isinstance(value, str):
+            body += b"\x02" + amf_str(value)
+        else:
+            body += b"\x00" + struct.pack(">d", float(value))
+    return body + b"\x00\x00\x09"
+
+
+def flv(**meta) -> bytes:
+    script = b"\x02" + amf_str("onMetaData") + b"\x08" + struct.pack(">I", len(meta)) + amf_props(**meta)
+    tag = b"\x12" + len(script).to_bytes(3, "big") + b"\x00" * 7 + script
+    return b"FLV\x01\x05" + struct.pack(">I", 9) + b"\x00" * 4 + tag + struct.pack(">I", len(tag)) + b"\x09" * 50
+
+
+def asf_header(w: int, h: int) -> bytes:
+    from alexed_bru.skills.metadata.containers import _ASF_HEADER, _ASF_STREAM, _ASF_VIDEO
+    body = _ASF_VIDEO + b"\x00" * 38 + struct.pack("<II", w, h) + b"\x00" * 40
+    stream = _ASF_STREAM + struct.pack("<Q", 24 + len(body)) + body
+    other = bytes(16) + struct.pack("<Q", 24 + 10) + bytes(10)
+    objects = other + stream
+    return _ASF_HEADER + struct.pack("<Q", 30 + len(objects)) + struct.pack("<I", 2) + b"\x01\x02" + objects
+
+
+def test_flv_on_metadata(tmp_path):
+    from alexed_bru.skills.metadata.containers import read_flv
+    data = flv(duration=5025.4, width=1280, height=720, title="Some Movie", artist="Jane Doe", date="2019")
+    meta = read_flv(write(tmp_path, "m.flv", data))
+    assert meta == {"title": "Some Movie", "artist": "Jane Doe", "width": 1280, "height": 720,
+                    "date": datetime(2019, 1, 1), "year": 2019, "duration": "1.23.45", "seconds": 5025}
+    p = write(tmp_path, "clip.flv", data)
+    assert proposed(p, "<artist> - <title> (<year>) [<quality>]") == "Jane Doe - Some Movie (2019) [720p].flv"
+
+
+def test_wmv_frame_size_from_the_header(tmp_path):
+    import io
+    from alexed_bru.skills.metadata.containers import asf_dimensions
+    assert asf_dimensions(io.BytesIO(asf_header(640, 360))) == (640, 360)
+    assert asf_dimensions(io.BytesIO(b"not asf" * 10)) is None
+    p = write(tmp_path, "v.wmv", asf_header(640, 360))    # header only: no tags, still a size
+    meta = MetadataStore().get(p, "video")
+    assert meta["resolution"] == "640x360" and meta["quality"] == "360p"
+
+
+@pytest.mark.parametrize("kind", ["flv", "asf"])
+def test_cut_off_and_damaged_flv_and_wmv_never_raise(kind):
+    import io
+    from alexed_bru.skills.metadata.containers import asf_dimensions, flv_tags
+    if kind == "flv":
+        good = flv(duration=10, width=640, height=360, title="T")
+
+        def read(data):
+            return flv_tags(io.BytesIO(data), len(data))
+    else:
+        good = asf_header(640, 360)
+
+        def read(data):
+            return asf_dimensions(io.BytesIO(data))
+    assert read(good)
+    for cut in range(len(good)):
+        try:
+            read(good[:cut])
+        except (ValueError, struct.error):
+            pass                                  # the provider turns these into "no tags"
+    for i in range(len(good)):
+        bad = bytearray(good)
+        bad[i] ^= 0xFF
+        try:
+            read(bytes(bad))
+        except (ValueError, struct.error, UnicodeError):
+            pass
+    for name, data in (("x.flv", good[:40]), ("y.wmv", good[:40]), ("z.flv", b"garbage" * 20)):
+        assert isinstance(MetadataStore().get(Path(write_tmp(name, data)), "video"), dict)
+
+
+def write_tmp(name: str, data: bytes) -> str:
+    import tempfile
+    folder = Path(tempfile.mkdtemp(prefix="bru-flv-"))
+    p = folder / name
+    p.write_bytes(data)
+    return str(p)
