@@ -17,6 +17,9 @@ are in the personal `alexbed-github-publish` skill; this file covers only what i
    - `README.md` → the `**Version:** X.Y.Z` line
 3. There is no CHANGELOG file: write the release notes from `git log vPREVIOUS..HEAD --oneline`.
    Keep the v1.0.0 notes' structure: Download, SmartScreen note with the `.sha256`, Highlights, Known limitations.
+   **Start the notes with a screenshot** of the release's main new feature, linked to the copy saved with the tag
+   (`https://raw.githubusercontent.com/alexbedca/Alexbed-Bulk-Rename-Utility/vX.Y.Z/docs/screenshots/<name>.png`),
+   so later screenshot updates don't change old notes. Check the link returns 200 after pushing the tag (1.4.0 shipped without one).
 
 ## 2. Test and build
 ```powershell
