@@ -40,7 +40,7 @@ SLIDES = [
          caption="Download AlexbedBulkRename.exe from GitHub and run it. No install needed.",
          say="Download Alexbed Bulk Rename dot E X E from the GitHub releases page, and run it. There's "
              "nothing to install. If Windows SmartScreen appears, choose More info, then Run anyway."),
-    dict(title="Add your files", image="cap-files.png", boxes=[(240, 8, 600, 52)],
+    dict(title="Add your files", image="cap-files.png", boxes=[(380, 8, 740, 52)],
          caption="Drag files or folders onto the window, or use + Files and + Folder.",
          say="Drag files or folders onto the window, or use the Files and Folder buttons. Tick Include "
              "subfolders to add everything inside a folder."),
@@ -76,9 +76,9 @@ SLIDES = [
              "you typed yourself. To undo that, right-click and choose Reset to rule name."),
     dict(title="Duplicate names, numbered", image="auto-number-and-edit.png",
          boxes=[(742, 85, 960, 113), (415, 218, 1390, 340)],
-         caption="Tick Auto-number duplicate names: photo (1), photo (2)…",
+         caption="Tick Auto-number duplicates: photo (1), photo (2)…",
          say="If two files would end up with the same name, they show in red and are skipped. Tick "
-             "Auto-number duplicate names, and they become photo one, photo two, and so on. Files that "
+             "Auto-number duplicates, and they become photo one, photo two, and so on. Files that "
              "are already in the folder are never overwritten."),
     dict(title="Rename, and undo any time", image="cap-history.png", boxes=[(8, 70, 812, 94), (528, 374, 650, 410)],
          caption="Click Rename files. History can undo any batch, even after a restart.",
@@ -96,9 +96,14 @@ SLIDES = [
              "preview shows where every file goes. Files with the same name get a number or the folder name, "
              "and the empty subfolders are removed. Like everything else, you can undo it from History: every "
              "file and folder comes back exactly as it was. The files can also go straight into the rename list."),
+    dict(title="Rename folders too", image="folder-mode.png", boxes=[(244, 12, 368, 46), (415, 160, 1373, 340)],
+         caption="Folders: the same rules for folder names, subfolders included.",
+         say="Click Folders at the top left to rename folders instead of files. Plus Folder lists the "
+             "subfolders of a folder, and an artist folder and its album folders can be renamed together. "
+             "As always, you can undo it from History."),
     dict(title="Names from music and photo tags", image="smart-tags.png", boxes=[(26, 470, 378, 525)],
          caption="Templates like <track:2>. <artist> - <title> use the files' own tags.",
-         say="Music, photos, videos and documents carry tags, including MKV, WebM and AVI videos. A "
+         say="Music, photos, videos and documents carry tags, including MKV, WebM, AVI, WMV and FLV videos. A "
              "template such as track, artist, title builds tidy names from them automatically."),
     dict(title="Spreadsheet and Send To", image="cap-more.png", boxes=["menu"],
          caption="••• menu: export and import name lists, or add the app to Explorer's Send To.",

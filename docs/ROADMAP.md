@@ -30,7 +30,7 @@ Folder links are never followed. Ideas for later: only some file types (e.g. onl
 *Sort into subfolders* mode (below) as its reverse.
 
 ### ☑ Folder renaming mode (v1.5.0)
-Done: a *Files / Folders* switch above the preview. `core/transaction._layers` orders a batch from the paths
+Done: a *Files / Folders* switch in the top bar (before + Files). `core/transaction._layers` orders a batch from the paths
 alone (inside folders first; when undoing, parents back first), runs the layers one after another and puts
 earlier layers back if a later one fails. `where_now` moves listed rows with their renamed folder. The
 confirmation warns about paths that a longer name pushes past 260 characters. Mixed batches (folders and

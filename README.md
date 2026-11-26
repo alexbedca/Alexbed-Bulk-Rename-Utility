@@ -5,7 +5,7 @@
 A portable, transactional bulk file renamer for big music libraries, photo and video folders and deeply nested document archives.
 It's a single `.exe` for Windows 10/11, with no installer and no registry footprint.
 
-**Version:** 1.4.0 &nbsp;|&nbsp; **Author:** Alexander Bediako &nbsp;|&nbsp; **Licence:** [GPL-3.0-or-later](LICENSE)
+**Version:** 1.5.0 &nbsp;|&nbsp; **Author:** Alexander Bediako &nbsp;|&nbsp; **Licence:** [GPL-3.0-or-later](LICENSE)
 
 > Versions 1.0.0 and 1.1.0 were published under the misspelt name *Alexed*. The app is **Alexbed**; old links
 > redirect here, and an existing `AlexedBRU_data` folder keeps being used, so your history and settings stay.
@@ -26,10 +26,11 @@ It's a single `.exe` for Windows 10/11, with no installer and no registry footpr
 
 ## How-to video
 
-New to the app? Watch the 3-minute narrated walkthrough:
+New to the app? Watch the 4-minute narrated walkthrough:
 **[Alexbed-Bulk-Rename-Utility-how-to.mp4](https://github.com/alexbedca/Alexbed-Bulk-Rename-Utility/releases/latest/download/Alexbed-Bulk-Rename-Utility-how-to.mp4)**
-(1080p, 8 MB, with subtitles). It covers adding files and rules, the preview, RegEx from an example,
-hand-edited names, auto-numbering, rename and undo, finding duplicates, tag-based names and the Send To menu.
+(1080p, 12 MB, with subtitles). It covers adding files and rules, the preview, RegEx from an example,
+hand-edited names, auto-numbering, rename and undo, finding duplicates, flattening and renaming folders,
+tag-based names, spreadsheets and the Send To menu.
 It's built from real screenshots by `tools\make_tutorial_video.py`.
 
 ## Download
@@ -82,7 +83,7 @@ To let the rules decide again, right-click → **Reset to rule name**, or clear 
 ### Duplicate names
 
 If two files would end up with the same name, both show a red error and are skipped. Tick
-**Auto-number duplicate names** (above the preview) to number them instead: the first keeps the name and the
+**Auto-number duplicates** (above the preview) to number them instead: the first keeps the name and the
 others become `photo (1).jpg`, `photo (2).jpg` and so on, skipping numbers already used in the folder.
 Numbered rows show in amber. This setting is remembered.
 
@@ -157,7 +158,9 @@ spread over artist and album folders.
 
 ## Rename folders
 
-Click **Folders** above the preview to rename folders instead of files. Every rule works the same way.
+Click **Folders** at the top left (next to **Files**) to rename folders instead of files. Every rule works the same way.
+
+![Folder mode: artist folders and their album folders renamed together](docs/screenshots/folder-mode.png)
 
 - **+ Folder** lists the subfolders of the folder you pick (all levels with *Include subfolders*, otherwise
   only the first level). **Dropping folders** onto the window (or Send To) lists those folders themselves.

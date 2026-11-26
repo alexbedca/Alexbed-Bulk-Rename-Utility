@@ -10,13 +10,14 @@ Reads audio (mutagen), video (MP4/MOV atoms), EXIF (Pillow) and PDF/Office metad
   1.1.1 renamed everything users see. Still "alexed" on purpose: the Python package `alexed_bru`, the preset format id
   `alexed-bru-preset`, this local folder name, and compatibility code for the old data folder `AlexedBRU_data`,
   env var `ALEXED_BRU_DATA` and Send To shortcut "Alexed Bulk Rename.lnk" (`paths.py`, `core/sendto.py`).
-- **Status:** v1.4.0 released 2026-11-19 (1.4.0: MKV/WebM/AVI tags, Send To race fix, flatten undo restores empty folders; 1.3.1: drag selection + import-only-edited polish; 1.3.0: list export/import, sort before numbering, Quick Recipes, one window, Clear history; 1.2.0 Flatten, 1.1.x earlier that day, 1.0.0 on 2026-11-06). Public repo
+- **Status:** v1.5.0 ready 2026-11-25 (1.5.0: folder renaming, WMV/FLV tags, slim exe 34 MB, smooth big folders; 1.4.0: MKV/WebM/AVI tags, Send To race fix, flatten undo restores empty folders; 1.3.1: drag selection + import-only-edited polish; 1.3.0: list export/import, sort before numbering, Quick Recipes, one window, Clear history; 1.2.0 Flatten, 1.1.x earlier that day, 1.0.0 on 2026-11-06). Public repo
   https://github.com/alexbedca/Alexbed-Bulk-Rename-Utility (GPL-3.0-or-later). Release assets: `AlexbedBulkRename.exe`,
   `AlexbedBulkRename.exe.sha256`, `LICENSE`, `THIRD-PARTY-NOTICES.txt`.
   1.1.0 added: Find duplicates, RegEx from example, plain-English rule cards, hand-edited names, auto-number
   duplicate names, Send To shortcut.
 - **Screenshots and social card:** regenerate every release. README screenshots come from the real window over
-  `test_library` (script pattern: drive `MainWindow` with `ALEXBED_BRU_DATA=test_library\.appdata`, `widget.grab()`).
+  `test_library`: `.venv\Scripts\python tools\make_screenshots.py` (all README shots incl. folder mode and Flatten,
+  plus `video\build\hdr-flatten.png` for the video). Then `tools\make_tutorial_video.py` (needs PYTHONPATH=project).
   Card: `.venv\Scripts\python tools\make_social_preview.py` → `docs/social-preview.png` (shows the version), then
   upload it in repo Settings → Social preview via Claude in Chrome.
 - **No CI** (no `.github/` folder): tests only run locally.

@@ -35,12 +35,13 @@ copies, undo from History, and check that `AlexbedBRU_data\` was created next to
 Report the startup time honestly (it was 4–6 s after commit c9f7cc5).
 
 ## 3. Screenshots and social card (every release)
-Screenshots live in `docs/screenshots/` (`main-window`, `regex-groups`, `regex-examples`, `regex-guide`,
-`regex-from-example`, `smart-tags`, `auto-number-and-edit`, `duplicates` .png). For 1.1.0 they were made by a
-script that drives the real `MainWindow` on screen over `test_library` (`ALEXBED_BRU_DATA=test_library\.appdata`)
-and saves `widget.grab()` at 1400×800; the duplicates/numbering demos are folders it creates inside
-`test_library`. Look at every image before committing. Then rebuild the card (it shows the version):
-`.venv\Scripts\python tools\make_social_preview.py` → `docs/social-preview.png`, and upload it in repo
+Run `.venv\Scripts\python tools\make_screenshots.py`: it drives the real `MainWindow` over `test_library`
+(git-ignored; it creates its own demo folders there) at 1400×800 and writes every `docs/screenshots/*.png`
+(incl. `folder-mode`, `flatten`, `recipes`) plus `video\build\hdr-flatten.png`. Look at every image before
+committing (watch for squeezed labels in the preview bar). Then the how-to video with
+`$env:PYTHONPATH=$PWD; .venv\Scripts\python tools\make_tutorial_video.py` (its highlight boxes are pixel
+positions on the screenshots: re-check them when the layout moves). Then rebuild the card (it shows the version):
+`$env:PYTHONPATH=$PWD; .venv\Scripts\python tools\make_social_preview.py` → `docs/social-preview.png`, and upload it in repo
 Settings → Social preview with Claude in Chrome (`find` the hidden "Upload an image..." file input, then
 `file_upload`); verify with GraphQL `usesCustomOpenGraphImage`.
 Testing the built exe by clicking needs computer use, which Alexander may decline; then report it as NOT TESTED.

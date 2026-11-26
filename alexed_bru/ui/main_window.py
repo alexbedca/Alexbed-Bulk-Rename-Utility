@@ -243,6 +243,21 @@ class MainWindow(QMainWindow):
             lay.addWidget(b)
             return b
 
+        # Files / Folders: what the list holds and what gets renamed
+        self.mode_files = QPushButton("Files")
+        self.mode_folders = QPushButton("Folders")
+        self.mode_files.setToolTip("Rename files (the usual mode)")
+        self.mode_folders.setToolTip("Rename folders instead of files.\n+ Folder lists the subfolders of the "
+                                     "folder you pick (all levels with Include subfolders);\ndropped folders are "
+                                     "listed themselves. A folder and its subfolders can be renamed together.")
+        for b in (self.mode_files, self.mode_folders):
+            b.setCheckable(True)
+            b.setObjectName("Segment")
+            lay.addWidget(b)
+        self.mode_files.setChecked(True)
+        self.mode_files.clicked.connect(lambda: self.set_folder_mode(False))
+        self.mode_folders.clicked.connect(lambda: self.set_folder_mode(True))
+        lay.addSpacing(12)
         button("+  Files", "Add files (Ctrl+O)", self.add_files_dialog)
         button("+  Folder", "Add a folder (Ctrl+Shift+O)", self.add_folder_dialog)
         self.recursive = QCheckBox("Include subfolders")
@@ -443,26 +458,11 @@ class MainWindow(QMainWindow):
         bar = QHBoxLayout()
         bar.addWidget(section_title("Preview"))
         bar.addSpacing(12)
-        # Files / Folders: what the list holds and what gets renamed
-        self.mode_files = QPushButton("Files")
-        self.mode_folders = QPushButton("Folders")
-        self.mode_files.setToolTip("Rename files (the usual mode)")
-        self.mode_folders.setToolTip("Rename folders instead of files.\n+ Folder lists the subfolders of the "
-                                     "folder you pick (all levels with Include subfolders);\ndropped folders are "
-                                     "listed themselves. A folder and its subfolders can be renamed together.")
-        for b in (self.mode_files, self.mode_folders):
-            b.setCheckable(True)
-            b.setObjectName("Segment")
-            bar.addWidget(b)
-        self.mode_files.setChecked(True)
-        self.mode_files.clicked.connect(lambda: self.set_folder_mode(False))
-        self.mode_folders.clicked.connect(lambda: self.set_folder_mode(True))
-        bar.addSpacing(10)
         self.search = QLineEdit()
         self.search.setPlaceholderText("Filter by name…")
         self.search.setClearButtonEnabled(True)
         self.search.setMaximumWidth(260)
-        self.search.setMinimumWidth(130)  # keep it readable next to the Files / Folders switch
+        self.search.setMinimumWidth(110)  # keep it readable when the window is narrow
         self.filter_mode = QComboBox()
         for key, label in FilterProxy.MODES:
             self.filter_mode.addItem(label, key)
@@ -471,7 +471,7 @@ class MainWindow(QMainWindow):
         bar.addWidget(self.search)
         bar.addWidget(self.filter_mode)
         bar.addSpacing(10)
-        self.auto_number = QCheckBox("Auto-number duplicate names")
+        self.auto_number = QCheckBox("Auto-number duplicates")
         self.auto_number.setToolTip("When two files would get the same name, number them instead of "
                                     "skipping them:\nphoto.jpg, photo (1).jpg, photo (2).jpg")
         self.auto_number.setChecked(bool(self.settings.get("auto_number", False)))
@@ -501,6 +501,9 @@ class MainWindow(QMainWindow):
             self.sort_menu.addAction(f"{label}\t{keys}", lambda w=where: self.move_selected(w))
         sort_btn.setMenu(self.sort_menu)
         bar.addWidget(sort_btn)
+        # never cut these short when the window is narrow; the counts wrap onto a second line instead
+        for widget in (self.auto_number, sort_btn):
+            widget.setMinimumWidth(widget.sizeHint().width())
         bar.addStretch(1)
         # Key for the preview highlighting, shown while there is something to rename.
         self.legend = QLabel(
